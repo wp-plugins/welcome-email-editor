@@ -72,7 +72,11 @@ if (!function_exists('wp_new_user_notification')) {
 			}
 			if ($send_as = $settings->header_send_as) {
 				if ($send_as == 'html') {
-					$headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
+					$charset = get_bloginfo('charset');
+					if (!$charset) {
+						$charset = 'iso-8859-1';
+					}
+					$headers .= 'Content-type: text/html; charset=' . $charset . "\r\n";
 				}
 			}
 			if ($additional = $settings->header_additional) {
