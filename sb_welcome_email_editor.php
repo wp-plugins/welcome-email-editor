@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the wordpress welcome email for both admin and standard members. Also allows for custom headers.
-Version: 1.2
+Version: 1.3
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 */
@@ -112,7 +112,7 @@ if (!function_exists('wp_new_user_notification')) {
 				
 				foreach ($admins as $admin_id) {
 					if ($admin = new WP_User($admin_id)) {
-						@wp_mail($admin->user_email, $admin_subject, $admin_message, $headers);
+						@mail($admin->user_email, $admin_subject, $admin_message, $headers);
 					}
 				}
 			}
