@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the wordpress welcome email for both admin and standard members. Also allows for custom headers.
-Version: 1.3
+Version: 1.4
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 */
@@ -11,6 +11,7 @@ Author URI: http://www.sean-barton.co.uk
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
 $sb_we_dir = trailingslashit(str_replace('\\', '/', dirname(__FILE__)));
 $sb_we_home = trailingslashit(str_replace('\\', '/', get_bloginfo('wpurl')));
+$sb_we_active = true;
 
 define('SB_WE_PRODUCT_NAME', 'SB Welcome Email Editor');
 define('SB_WE_PLUGIN_DIR_PATH', $sb_we_dir);
@@ -27,6 +28,13 @@ __('Settings','sb_we')=>'sb_we_settings'
 function sb_we_loaded() {
 	add_action('init', 'sb_we_init');
 	add_action('admin_menu', 'sb_we_admin_page');
+	
+	if (is_admin()) {
+		if ($sb_we_active) {
+			$msg = '<div class="error"><p>' . SB_WE_PRODUCT_NAME . ' can not function because another plugin is conflicting. Please disable other plugins until this message disappears to fix the problem.</p></div>';
+			add_action('admin_notices', create_function( '', 'echo \'' . $msg . '\';' ));
+		}
+	}
 }
 
 function sb_we_init() {
@@ -135,6 +143,8 @@ if (!function_exists('wp_new_user_notification')) {
 			}
 		}
 	}
+} else {
+	$sb_we_active = false;
 }
 
 function sb_we_update_settings() {
@@ -142,7 +152,7 @@ function sb_we_update_settings() {
 
 	$settings = new stdClass();
 	foreach ($old_settings as $key=>$value) {
-		$settings->$key = sb_we_post($key, $value);
+		$settings->$key = stripcslashes(sb_we_post($key, $value));
 	}
 
 	if (update_option('sb_we_settings', $settings)) {
@@ -242,7 +252,11 @@ function sb_we_settings() {
 	
 	$i = 0;
 	foreach ($page_options as $name=>$options) {
-		$value = stripslashes(sb_we_post($name, $settings->$name));
+		if ($options['type'] == 'submit') {
+			$value = $options['value'];
+		} else {
+			$value = stripslashes(sb_we_post($name, $settings->$name));
+		}
 		$title = (isset($options['title']) ? $options['title']:false);
 		
 		$html .= '	<tr class="' . ($i%2 ? 'alternate':'') . '">

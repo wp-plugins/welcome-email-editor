@@ -2,7 +2,7 @@
 Contributors: seanbarton
 Tags: welcome email, wordpress welcome email, welcome email editor, mail, email
 Requires at least: 2.3
-Tested up to: 2.9.1
+Tested up to: 3.0
 
 A Plugin to provide an interface for the Wordpress Welcome Email. Allows adding of headers to prevent emails going into spam and changes to the text.
 
