@@ -28,9 +28,10 @@ __('Settings','sb_we')=>'sb_we_settings'
 function sb_we_loaded() {
 	add_action('init', 'sb_we_init');
 	add_action('admin_menu', 'sb_we_admin_page');
+	global $sb_we_active;
 	
 	if (is_admin()) {
-		if ($sb_we_active) {
+		if (!$sb_we_active) {
 			$msg = '<div class="error"><p>' . SB_WE_PRODUCT_NAME . ' can not function because another plugin is conflicting. Please disable other plugins until this message disappears to fix the problem.</p></div>';
 			add_action('admin_notices', create_function( '', 'echo \'' . $msg . '\';' ));
 		}
