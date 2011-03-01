@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the wordpress welcome email for both admin and standard members. Also allows for custom headers.
-Version: 1.4
+Version: 1.5
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 */
@@ -46,6 +46,7 @@ function sb_we_init() {
 		$sb_we_settings->admin_subject = '[[blog_name]] New User Registration';
 		$sb_we_settings->admin_body = 'New user registration on your blog ' . $blog_name . '<br /><br />Username: [user_login]<br />Email: [user_email]';
 		$sb_we_settings->admin_notify_user_id = 1;
+		$sb_we_settings->header_from_name = '';
 		$sb_we_settings->header_from_email = '[admin_email]';
 		$sb_we_settings->header_reply_to = '[admin_email]';
 		$sb_we_settings->header_send_as = 'html';
@@ -77,15 +78,24 @@ if (!function_exists('wp_new_user_notification')) {
 				$headers .= 'Reply-To: ' . $reply_to . "\r\n";
 			}
 			if ($from_email = $settings->header_from_email) {
-				$headers .= 'From: ' . $from_email . "\r\n";
+				apply_filters('wp_mail_from', create_function('$i', 'return $from_email;'), 1, 100);
+				
+				if ($from_name = $settings->header_from_name) {
+					apply_filters('wp_mail_from_name',create_function('$i', 'return $from_name;'), 1, 100);
+					$headers .= 'From: ' . $from_name . ' <' . $from_email . ">\r\n";
+				} else {
+					$headers .= 'From: ' . $from_email . "\r\n";
+				}
 			}
 			if ($send_as = $settings->header_send_as) {
 				if ($send_as == 'html') {
-					$charset = get_bloginfo('charset');
-					if (!$charset) {
+					if (!$charset = get_bloginfo('charset')) {
 						$charset = 'iso-8859-1';
 					}
 					$headers .= 'Content-type: text/html; charset=' . $charset . "\r\n";
+					
+					apply_filters('wp_mail_content_type', create_function('$i', 'return "text/html";'), 1, 100);
+					apply_filters('wp_mail_charset', create_function('$i', 'return $charset;'), 1, 100);
 				}
 			}
 			if ($additional = $settings->header_additional) {
@@ -121,7 +131,7 @@ if (!function_exists('wp_new_user_notification')) {
 				
 				foreach ($admins as $admin_id) {
 					if ($admin = new WP_User($admin_id)) {
-						@mail($admin->user_email, $admin_subject, $admin_message, $headers);
+						wp_mail($admin->user_email, $admin_subject, $admin_message, $headers);
 					}
 				}
 			}
@@ -152,12 +162,14 @@ function sb_we_update_settings() {
 	$old_settings = get_option('sb_we_settings');
 
 	$settings = new stdClass();
-	foreach ($old_settings as $key=>$value) {
-		$settings->$key = stripcslashes(sb_we_post($key, $value));
-	}
-
-	if (update_option('sb_we_settings', $settings)) {
-		sb_we_display_message(__('Settings have been successfully saved', 'sb_we'));
+	if ($post_settings = sb_we_post('settings')) {
+		foreach ($post_settings as $key=>$value) {
+			$settings->$key = stripcslashes($value);
+		}
+	
+		if (update_option('sb_we_settings', $settings)) {
+			sb_we_display_message(__('Settings have been successfully saved', 'sb_we'));
+		}
 	}
 }
 
@@ -186,43 +198,49 @@ function sb_we_settings() {
 	$settings = get_option('sb_we_settings');
 	
 	$page_options = array(
-	'user_subject'=>array(
+	'settings[user_subject]'=>array(
 		'title'=>'User Email Subject'
 		, 'type'=>'text'
 		, 'style'=>'width: 500px;'
 		, 'description'=>'Subject line for the email sent to the user.'
 	)
-	, 'user_body'=>array(
+	, 'settings[user_body]'=>array(
 		'title'=>'User Email Body'
 		, 'type'=>'textarea'
 		, 'style'=>'width: 550px; height: 200px;'
 		, 'description'=>'Body content for the email sent to the user.'
 	)
-	, 'admin_subject'=>array(
+	, 'settings[admin_subject]'=>array(
 		'title'=>'Admin Email Subject'
 		, 'type'=>'text'
 		, 'style'=>'width: 500px;'
 		, 'description'=>'Subject Line for the email sent to the admin user(s).'
 	)
-	, 'admin_body'=>array(
+	, 'settings[admin_body]'=>array(
 		'title'=>'Admin Email Body'
 		, 'type'=>'textarea'
 		, 'style'=>'width: 550px; height: 200px;'
 		, 'description'=>'Body content for the email sent to the admin user(s).'
 	)
-	, 'header_from_email'=>array(
+	, 'settings[header_from_email]'=>array(
 		'title'=>'From Email Address'
 		, 'type'=>'text'
 		, 'style'=>'width: 500px;'
 		, 'description'=>'Optional Header sent to change the from email address for new user notification.'
 	)
-	, 'header_reply_to'=>array(
+	, 'settings[header_from_name]'=>array(
+		'title'=>'From Name'
+		, 'type'=>'text'
+		, 'style'=>'width: 500px;'
+		, 'description'=>'Optional Header sent to change the from name for new user notification.'
+	)	
+	, 'settings[header_reply_to]'=>array(
 		'title'=>'Reply To Email Address'
 		, 'type'=>'text'
 		, 'style'=>'width: 500px;'
 		, 'description'=>'Optional Header sent to change the reply to address for new user notification.'
 	)
-	, 'header_send_as'=>array(
+	, 'settings[header_send_as]'=>array(
 		'title'=>'Send Email As'
 		, 'type'=>'select'
 		, 'style'=>'width: 100px;'
@@ -230,13 +248,19 @@ function sb_we_settings() {
 			'text'=>'TEXT'
 			, 'html'=>'HTML'
 		)
-		, 'description'=>'Send email as Text or HTML (Rememeber to remove html from text emails).'
+		, 'description'=>'Send email as Text or HTML (Remember to remove html from text emails).'
 	)
-	, 'header_additional'=>array(
+	, 'settings[header_additional]'=>array(
 		'title'=>'Additional Email Headers'
 		, 'type'=>'textarea'
 		, 'style'=>'width: 550px; height: 200px;'
 		, 'description'=>'Optional field for advanced users to add more headers. Dont\'t forget to separate headers with \r\n.'
+	)
+	, 'settings[admin_notify_user_id]'=>array(
+		'title'=>'Send Admin Email To...'
+		, 'type'=>'text'
+		, 'style'=>'width: 500px;'
+		, 'description'=>'This allows you to type in the User IDs of the people who you want the admin notification to be sent to. 1 is admin normally but just add more separating by commas (eg: 1,2,3,4).'
 	)	
 	, 'submit'=>array(
 		'title'=>''
@@ -256,7 +280,9 @@ function sb_we_settings() {
 		if ($options['type'] == 'submit') {
 			$value = $options['value'];
 		} else {
-			$value = stripslashes(sb_we_post($name, $settings->$name));
+			$tmp_name = str_replace('settings[', '', $name);
+			$tmp_name = str_replace(']', '', $tmp_name);
+			$value = stripslashes(sb_we_post($tmp_name, $settings->$tmp_name));
 		}
 		$title = (isset($options['title']) ? $options['title']:false);
 		
