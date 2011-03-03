@@ -194,6 +194,14 @@ function sb_we_settings() {
 		sb_we_update_settings();
 	}
 	
+	if (sb_we_post('test_send')) {
+		global $current_user;
+		get_currentuserinfo();
+		
+		wp_new_user_notification($current_user->ID, '[User password will appear here]');
+		sb_we_display_message('Test email sent to "' . $current_user->user_email . '"');
+	}
+	
 	$html = '';
 	$settings = get_option('sb_we_settings');
 	
@@ -207,7 +215,7 @@ function sb_we_settings() {
 	, 'settings[user_body]'=>array(
 		'title'=>'User Email Body'
 		, 'type'=>'textarea'
-		, 'style'=>'width: 550px; height: 200px;'
+		, 'style'=>'width: 650px; height: 500px;'
 		, 'description'=>'Body content for the email sent to the user.'
 	)
 	, 'settings[admin_subject]'=>array(
@@ -219,7 +227,7 @@ function sb_we_settings() {
 	, 'settings[admin_body]'=>array(
 		'title'=>'Admin Email Body'
 		, 'type'=>'textarea'
-		, 'style'=>'width: 550px; height: 200px;'
+		, 'style'=>'width: 650px; height: 300px;'
 		, 'description'=>'Body content for the email sent to the admin user(s).'
 	)
 	, 'settings[header_from_email]'=>array(
@@ -266,7 +274,12 @@ function sb_we_settings() {
 		'title'=>''
 		, 'type'=>'submit'
 		, 'value'=>'Update Settings'
-	)	
+	)
+	, 'test_send'=>array(
+		'title'=>''
+		, 'type'=>'submit'
+		, 'value'=>'Test Emails (Save first, will send to current user)'
+	)
 	);
 	
 	$html .= '<div style="margin-bottom: 10px;">' . __('This page allows you to update the Wordpress welcome email and add headers to make it less likely to fall into spam. You can edit the templates for both the admin and user emails and assign admin members to receive the notifications. Use the following hooks in any of the boxes below: [site_url], [login_url], [user_email], [user_login], [plaintext_password], [blog_name], [admin_email]', 'sb_we') . '</div>';	
