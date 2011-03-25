@@ -16,6 +16,10 @@ Added support whereby the admin notification can be turned off or a different ad
 
 Please email me or use the support forum if you have ideas for extending it or find any issues and I will be back to you as soon as possible.
 
+Changelog:
+<V1.6 - Didn't quite manage to add a changelog until now :)
+V1.6 - 25/3/11 - Added user_id and custom_fields as hooks for use
+
 == Installation ==
 
 1. Upload the contents of the ZIP file to the `/wp-content/plugins/` directory

@@ -3,9 +3,13 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the wordpress welcome email for both admin and standard members. Also allows for custom headers.
-Version: 1.5
+Version: 1.6
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
+
+Changelog:
+<V1.6 - Didn't quite manage to add a changelog until now :)
+V1.6 - 25/3/11 - Added user_id and custom_fields as hooks for use
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -116,18 +120,32 @@ if (!function_exists('wp_new_user_notification')) {
 					$admins = array($admins);
 				}
 				
+				global $wpdb;
+				$sql = 'SELECT meta_key, meta_value
+					FROM ' . $wpdb->usermeta . '
+					WHERE user_ID = ' . $user_id;
+				$custom_fields = array();
+				if ($meta_items = $wpdb->get_results($sql)) {
+					foreach ($meta_items as $i=>$meta_item) {
+						$custom_fields[$meta_item->meta_key] = $meta_item->meta_value;
+					}
+				}
+				
 				$admin_message = str_replace('[blog_name]', $blog_name, $admin_message);
 				$admin_message = str_replace('[site_url]', $sb_we_home, $admin_message);
 				$admin_message = str_replace('[login_url]', $sb_we_home . 'wp-login.php', $admin_message);
 				$admin_message = str_replace('[user_email]', $user_email, $admin_message);
 				$admin_message = str_replace('[user_login]', $user_login, $admin_message);
+				$admin_message = str_replace('[user_id]', $user_id, $admin_message);
 				$admin_message = str_replace('[plaintext_password]', $plaintext_pass, $admin_message);
 				$admin_message = str_replace('[user_password]', $plaintext_pass, $admin_message);
+				$admin_message = str_replace('[custom_fields]', '<pre>' . print_r($custom_fields, true) . '</pre>', $admin_message);
 			
 				$admin_subject = str_replace('[blog_name]', $blog_name, $admin_subject);
 				$admin_subject = str_replace('[site_url]', $sb_we_home, $admin_subject);
 				$admin_subject = str_replace('[user_email]', $user_email, $admin_subject);
 				$admin_subject = str_replace('[user_login]', $user_login, $admin_subject);				
+				$admin_subject = str_replace('[user_id]', $user_id, $admin_subject);				
 				
 				foreach ($admins as $admin_id) {
 					if ($admin = new WP_User($admin_id)) {
@@ -141,6 +159,7 @@ if (!function_exists('wp_new_user_notification')) {
 				$user_message = str_replace('[login_url]', $sb_we_home . 'wp-login.php', $user_message);
 				$user_message = str_replace('[user_email]', $user_email, $user_message);
 				$user_message = str_replace('[user_login]', $user_login, $user_message);
+				$user_message = str_replace('[user_id]', $user_id, $user_message);
 				$user_message = str_replace('[plaintext_password]', $plaintext_pass, $user_message);
 				$user_message = str_replace('[user_password]', $plaintext_pass, $user_message);
 				$user_message = str_replace('[blog_name]', $blog_name, $user_message);
@@ -149,6 +168,7 @@ if (!function_exists('wp_new_user_notification')) {
 				$user_subject = str_replace('[site_url]', $sb_we_home, $user_subject);
 				$user_subject = str_replace('[user_email]', $user_email, $user_subject);
 				$user_subject = str_replace('[user_login]', $user_login, $user_subject);			
+				$user_subject = str_replace('[user_id]', $user_id, $user_subject);			
 			
 				wp_mail($user_email, $user_subject, $user_message, $headers);
 			}
@@ -282,7 +302,7 @@ function sb_we_settings() {
 	)
 	);
 	
-	$html .= '<div style="margin-bottom: 10px;">' . __('This page allows you to update the Wordpress welcome email and add headers to make it less likely to fall into spam. You can edit the templates for both the admin and user emails and assign admin members to receive the notifications. Use the following hooks in any of the boxes below: [site_url], [login_url], [user_email], [user_login], [plaintext_password], [blog_name], [admin_email]', 'sb_we') . '</div>';	
+	$html .= '<div style="margin-bottom: 10px;">' . __('This page allows you to update the Wordpress welcome email and add headers to make it less likely to fall into spam. You can edit the templates for both the admin and user emails and assign admin members to receive the notifications. Use the following hooks in any of the boxes below: [site_url], [login_url], [user_email], [user_login], [plaintext_password], [blog_name], [admin_email], [user_id], [custom_fields]', 'sb_we') . '</div>';	
 	$html .= sb_we_start_box('Settings');
 	
 	$html .= '<form method="POST">';
