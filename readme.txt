@@ -2,7 +2,7 @@
 Contributors: seanbarton
 Tags: welcome email, wordpress welcome email, welcome email editor, mail, email, new user email
 Requires at least: 2.3
-Tested up to: 3.1
+Tested up to: 3.1.1
 
 A Plugin to provide an interface for the Wordpress Welcome Email. Allows adding of headers to prevent emails going into spam and changes to the text.
 
@@ -12,13 +12,18 @@ I thought that the Wordpress Welcome Email to both the Admin and the User were v
 
 It simply adds a new admin page that has a few options for the welcome email and gives you a list of hooks to use in the text to make the email a little more personal.
 
-Added support whereby the admin notification can be turned off or a different admin (or admins, support for multiple recipients) can be notified. Plenty of hooks to make the emails as customisable as possible. 
+Added support whereby the admin notification can be turned off or a different admin (or admins, support for multiple recipients) can be notified. Plenty of hooks to make the emails as customisable as possible.
+
+A reminder email service has now been added whereby the admin user can send a reminder to any particular user. This can be the original welcome email or a separate template configured on the Welcome Email Editor settings page.
 
 Please email me or use the support forum if you have ideas for extending it or find any issues and I will be back to you as soon as possible.
+
+I would recommend the use of an SMTP service with any Wordpress plugin. A large amount of emails fall needlessly into Spam bins across the world (I get a fair amount of comment approval spam to deal with) because the Wordpress site uses Sendmail to deliver email. I noticed an immediate improvement when using SMTP to send. It's really easy so there's no excuse :) 
 
 Changelog:
 <V1.6 - Didn't quite manage to add a changelog until now :)
 V1.6 - 25/3/11 - Added user_id and custom_fields as hooks for use
+V1.7 - 17/4/11 - Added password reminder service and secondary email template for it's use
 
 == Installation ==
 

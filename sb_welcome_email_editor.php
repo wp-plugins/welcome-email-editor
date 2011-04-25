@@ -2,14 +2,15 @@
 /*
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
-Description: Allows you to change the wordpress welcome email for both admin and standard members. Also allows for custom headers.
-Version: 1.6
+Description: Allows you to change the wordpress welcome email for both admin and standard members. Simple!
+Version: 1.7
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
 Changelog:
 <V1.6 - Didn't quite manage to add a changelog until now :)
 V1.6 - 25/3/11 - Added user_id and custom_fields as hooks for use
+V1.7 - 17/4/11 - Added password reminder service and secondary email template for it's use
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -32,6 +33,10 @@ __('Settings','sb_we')=>'sb_we_settings'
 function sb_we_loaded() {
 	add_action('init', 'sb_we_init');
 	add_action('admin_menu', 'sb_we_admin_page');
+	add_action('profile_update', 'sb_we_profile_update');
+	add_action('manage_users_custom_column', 'sb_we_user_col_row', 8, 3);
+	add_filter('manage_users_columns', 'sb_we_user_col');
+	
 	global $sb_we_active;
 	
 	if (is_admin()) {
@@ -39,7 +44,77 @@ function sb_we_loaded() {
 			$msg = '<div class="error"><p>' . SB_WE_PRODUCT_NAME . ' can not function because another plugin is conflicting. Please disable other plugins until this message disappears to fix the problem.</p></div>';
 			add_action('admin_notices', create_function( '', 'echo \'' . $msg . '\';' ));
 		}
+		
+		foreach ($_REQUEST as $key=>$value) {
+			if (substr($key, 0, 6) == 'sb_we_') {
+				if (substr($key, 0, 13) == 'sb_we_resend_') {
+					if ($user_id = substr($key, 13)) {
+						sb_we_send_new_user_notification($user_id);
+						wp_redirect(admin_url('users.php'));
+					}
+				}
+			}
+		}		
 	}
+}
+
+function sb_we_send_new_user_notification($user_id) {
+	$return = false;
+	
+	if (!$plaintext_pass = get_usermeta($user_id, 'sb_we_plaintext_pass')) {
+		$plaintext_pass = '[Your Password Here]';
+	}
+	
+	if (wp_new_user_notification($user_id, $plaintext_pass)) {
+		$return = 'Welcome email sent.';
+	}
+	
+	return $return;
+}
+
+function sb_we_profile_update() {
+	$pass1 = sb_we_post('pass1');
+	$pass2 = sb_we_post('pass2');
+	$action = sb_we_post('action');
+	$user_id = sb_we_post('user_id');
+	
+	if ($action == 'update' && $user_id) {
+		if ($pass1 && $pass1 == $pass2) {
+			update_usermeta($user_id, 'sb_we_plaintext_pass', $pass1);
+		}
+	}
+	
+}
+
+function sb_we_user_col($cols) {
+	$cols['welcome_email'] = 'Resend Welcome Email';
+	
+	return $cols;
+}
+
+function sb_we_user_col_row($value, $col_name, $id) {
+	$return = '-';
+	
+	if ($col_name == 'welcome_email') {
+		$plain_pass = get_usermeta($id, 'sb_we_plaintext_pass');
+		$last_sent = get_usermeta($id, 'sb_we_last_sent');
+				
+		if ($plain_pass) {
+			$return = '<input type="submit" name="sb_we_resend_' . $id . '" value="Resend Welcome Email (Inc Pw) &#0187;" />';
+		} else {
+			$return = '<input type="submit" name="sb_we_resend_' . $id . '" value="Resend Welcome Email (Ex Pw) &#0187;" />';
+		}
+
+		if ($last_sent) {
+			$last_sent_string = date('jS F Y H:i:s', $last_sent);
+			if ($last_sent > time()-3600) {
+				$last_sent_string = '<span style="color: green;">' . $last_sent_string . '</span>';
+			}
+			$return .= '<br /><em>Last Re/Sent: ' . $last_sent_string . '</em>';
+		}
+	}
+	
+	return $return;
 }
 
 function sb_we_init() {
@@ -50,6 +125,9 @@ function sb_we_init() {
 		$sb_we_settings->admin_subject = '[[blog_name]] New User Registration';
 		$sb_we_settings->admin_body = 'New user registration on your blog ' . $blog_name . '<br /><br />Username: [user_login]<br />Email: [user_email]';
 		$sb_we_settings->admin_notify_user_id = 1;
+		$sb_we_settings->remind_on_profile_update = 0;
+		$sb_we_settings->reminder_subject = '[[blog_name]] Your username and password reminder';
+		$sb_we_settings->reminder_body = 'Just a reminder for you...<br /><br />Username: [user_login]<br />Password: [user_password]<br />[login_url]';
 		$sb_we_settings->header_from_name = '';
 		$sb_we_settings->header_from_email = '[admin_email]';
 		$sb_we_settings->header_reply_to = '[admin_email]';
@@ -59,11 +137,15 @@ function sb_we_init() {
 		add_option('sb_we_settings', $sb_we_settings);
 	}
 }
+
 if (!function_exists('wp_new_user_notification')) {
 	function wp_new_user_notification($user_id, $plaintext_pass = '') {
 		global $sb_we_home;
 		
 		if ($user = new WP_User($user_id)) {
+			update_usermeta($user_id, 'sb_we_plaintext_pass', $plaintext_pass); //store user password in case of reminder
+			update_usermeta($user_id, 'sb_we_last_sent', time());
+			
 			$blog_name = get_option('blogname');
 			$settings = get_option('sb_we_settings');
 			$admin_email = get_option('admin_email');
@@ -75,6 +157,9 @@ if (!function_exists('wp_new_user_notification')) {
 			$user_message = $settings->user_body;
 			$admin_subject = $settings->admin_subject;
 			$admin_message = $settings->admin_body;
+			
+			$first_name = $user->first_name;
+			$last_name = $user->last_name;
 			
 			//Headers
 			$headers = '';
@@ -136,6 +221,8 @@ if (!function_exists('wp_new_user_notification')) {
 				$admin_message = str_replace('[login_url]', $sb_we_home . 'wp-login.php', $admin_message);
 				$admin_message = str_replace('[user_email]', $user_email, $admin_message);
 				$admin_message = str_replace('[user_login]', $user_login, $admin_message);
+				$admin_message = str_replace('[first_name]', $first_name, $admin_message);
+				$admin_message = str_replace('[last_name]', $last_name, $admin_message);
 				$admin_message = str_replace('[user_id]', $user_id, $admin_message);
 				$admin_message = str_replace('[plaintext_password]', $plaintext_pass, $admin_message);
 				$admin_message = str_replace('[user_password]', $plaintext_pass, $admin_message);
@@ -143,6 +230,8 @@ if (!function_exists('wp_new_user_notification')) {
 			
 				$admin_subject = str_replace('[blog_name]', $blog_name, $admin_subject);
 				$admin_subject = str_replace('[site_url]', $sb_we_home, $admin_subject);
+				$admin_subject = str_replace('[first_name]', $first_name, $admin_subject);
+				$admin_subject = str_replace('[last_name]', $last_name, $admin_subject);
 				$admin_subject = str_replace('[user_email]', $user_email, $admin_subject);
 				$admin_subject = str_replace('[user_login]', $user_login, $admin_subject);				
 				$admin_subject = str_replace('[user_id]', $user_id, $admin_subject);				
@@ -159,6 +248,8 @@ if (!function_exists('wp_new_user_notification')) {
 				$user_message = str_replace('[login_url]', $sb_we_home . 'wp-login.php', $user_message);
 				$user_message = str_replace('[user_email]', $user_email, $user_message);
 				$user_message = str_replace('[user_login]', $user_login, $user_message);
+				$user_message = str_replace('[last_name]', $last_name, $user_message);
+				$user_message = str_replace('[first_name]', $first_name, $user_message);
 				$user_message = str_replace('[user_id]', $user_id, $user_message);
 				$user_message = str_replace('[plaintext_password]', $plaintext_pass, $user_message);
 				$user_message = str_replace('[user_password]', $plaintext_pass, $user_message);
@@ -167,6 +258,8 @@ if (!function_exists('wp_new_user_notification')) {
 				$user_subject = str_replace('[blog_name]', $blog_name, $user_subject);
 				$user_subject = str_replace('[site_url]', $sb_we_home, $user_subject);
 				$user_subject = str_replace('[user_email]', $user_email, $user_subject);
+				$user_subject = str_replace('[last_name]', $last_name, $user_subject);
+				$user_subject = str_replace('[first_name]', $first_name, $user_subject);
 				$user_subject = str_replace('[user_login]', $user_login, $user_subject);			
 				$user_subject = str_replace('[user_id]', $user_id, $user_subject);			
 			
@@ -302,7 +395,7 @@ function sb_we_settings() {
 	)
 	);
 	
-	$html .= '<div style="margin-bottom: 10px;">' . __('This page allows you to update the Wordpress welcome email and add headers to make it less likely to fall into spam. You can edit the templates for both the admin and user emails and assign admin members to receive the notifications. Use the following hooks in any of the boxes below: [site_url], [login_url], [user_email], [user_login], [plaintext_password], [blog_name], [admin_email], [user_id], [custom_fields]', 'sb_we') . '</div>';	
+	$html .= '<div style="margin-bottom: 10px;">' . __('This page allows you to update the Wordpress welcome email and add headers to make it less likely to fall into spam. You can edit the templates for both the admin and user emails and assign admin members to receive the notifications. Use the following hooks in any of the boxes below: [site_url], [login_url], [user_email], [user_login], [plaintext_password], [blog_name], [admin_email], [user_id], [custom_fields], [first_name], [last_name]', 'sb_we') . '</div>';	
 	$html .= sb_we_start_box('Settings');
 	
 	$html .= '<form method="POST">';
