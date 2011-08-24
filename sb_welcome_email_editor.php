@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the wordpress welcome email for both admin and standard members. Simple!
-Version: 1.7
+Version: 1.8
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
@@ -11,6 +11,7 @@ Changelog:
 <V1.6 - Didn't quite manage to add a changelog until now :)
 V1.6 - 25/3/11 - Added user_id and custom_fields as hooks for use
 V1.7 - 17/4/11 - Added password reminder service and secondary email template for it's use
+V1.8 - 24/8/11 - Added [admin_email] hook to be parsed for both user and admin email templates instead of just the email headers
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -217,6 +218,7 @@ if (!function_exists('wp_new_user_notification')) {
 				}
 				
 				$admin_message = str_replace('[blog_name]', $blog_name, $admin_message);
+				$admin_message = str_replace('[admin_email]', $admin_email, $admin_message);
 				$admin_message = str_replace('[site_url]', $sb_we_home, $admin_message);
 				$admin_message = str_replace('[login_url]', $sb_we_home . 'wp-login.php', $admin_message);
 				$admin_message = str_replace('[user_email]', $user_email, $admin_message);
@@ -244,6 +246,7 @@ if (!function_exists('wp_new_user_notification')) {
 			}
 		
 			if (!empty($plaintext_pass)) {
+				$user_message = str_replace('[admin_email]', $admin_email, $user_message);
 				$user_message = str_replace('[site_url]', $sb_we_home, $user_message);
 				$user_message = str_replace('[login_url]', $sb_we_home . 'wp-login.php', $user_message);
 				$user_message = str_replace('[user_email]', $user_email, $user_message);

@@ -2,7 +2,7 @@
 Contributors: seanbarton
 Tags: welcome email, wordpress welcome email, welcome email editor, mail, email, new user email
 Requires at least: 2.3
-Tested up to: 3.1.1
+Tested up to: 3.2
 
 A Plugin to provide an interface for the Wordpress Welcome Email. Allows adding of headers to prevent emails going into spam and changes to the text.
 
@@ -24,6 +24,7 @@ Changelog:
 <V1.6 - Didn't quite manage to add a changelog until now :)
 V1.6 - 25/3/11 - Added user_id and custom_fields as hooks for use
 V1.7 - 17/4/11 - Added password reminder service and secondary email template for it's use
+V1.8 - 24/8/11 - Added [admin_email] hook to be parsed for both user and admin email templates instead of just the email headers
 
 == Installation ==
 
