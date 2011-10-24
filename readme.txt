@@ -25,6 +25,7 @@ Changelog:
 V1.6 - 25/3/11 - Added user_id and custom_fields as hooks for use
 V1.7 - 17/4/11 - Added password reminder service and secondary email template for it's use
 V1.8 - 24/8/11 - Added [admin_email] hook to be parsed for both user and admin email templates instead of just the email headers
+V1.9 - 24/10/11 - Removed conflict with User Access Manager plugin causing the resend welcome email rows to now show on the user list
 
 == Installation ==
 

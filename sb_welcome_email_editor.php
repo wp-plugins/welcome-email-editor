@@ -2,8 +2,8 @@
 /*
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
-Description: Allows you to change the wordpress welcome email for both admin and standard members. Simple!
-Version: 1.8
+Description: Allows you to change the wordpress welcome email (and resend passwords) for both admin and standard members. Simple!
+Version: 1.9
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
@@ -12,6 +12,7 @@ Changelog:
 V1.6 - 25/3/11 - Added user_id and custom_fields as hooks for use
 V1.7 - 17/4/11 - Added password reminder service and secondary email template for it's use
 V1.8 - 24/8/11 - Added [admin_email] hook to be parsed for both user and admin email templates instead of just the email headers
+V1.9 - 24/10/11 - Removed conflict with User Access Manager plugin causing the resend welcome email rows to now show on the user list
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -35,7 +36,7 @@ function sb_we_loaded() {
 	add_action('init', 'sb_we_init');
 	add_action('admin_menu', 'sb_we_admin_page');
 	add_action('profile_update', 'sb_we_profile_update');
-	add_action('manage_users_custom_column', 'sb_we_user_col_row', 8, 3);
+	add_action('manage_users_custom_column', 'sb_we_user_col_row', 98, 3);
 	add_filter('manage_users_columns', 'sb_we_user_col');
 	
 	global $sb_we_active;
@@ -101,9 +102,9 @@ function sb_we_user_col_row($value, $col_name, $id) {
 		$last_sent = get_usermeta($id, 'sb_we_last_sent');
 				
 		if ($plain_pass) {
-			$return = '<input type="submit" name="sb_we_resend_' . $id . '" value="Resend Welcome Email (Inc Pw) &#0187;" />';
+			$return = '<input type="submit" name="sb_we_resend_' . $id . '" value="Resend Welcome (Inc Pw)" />';
 		} else {
-			$return = '<input type="submit" name="sb_we_resend_' . $id . '" value="Resend Welcome Email (Ex Pw) &#0187;" />';
+			$return = '<input type="submit" name="sb_we_resend_' . $id . '" value="Resend Welcome (Ex Pw)" />';
 		}
 
 		if ($last_sent) {
