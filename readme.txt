@@ -1,10 +1,10 @@
 === Plugin Name ===
 Contributors: seanbarton
-Tags: welcome email, wordpress welcome email, welcome email editor, mail, email, new user email
+Tags: welcome email, wordpress welcome email, welcome email editor, mail, email, new user email, password reminder
 Requires at least: 2.3
-Tested up to: 3.2
+Tested up to: 3.2.1
 
-A Plugin to provide an interface for the Wordpress Welcome Email. Allows adding of headers to prevent emails going into spam and changes to the text.
+A Plugin to provide an interface for the Wordpress Welcome Email. Allows adding of headers to prevent emails going into spam and changes to the text. Also offers a password reminder service accessable via the quick options on the admin users page.
 
 == Description ==
 
@@ -26,6 +26,7 @@ V1.6 - 25/3/11 - Added user_id and custom_fields as hooks for use
 V1.7 - 17/4/11 - Added password reminder service and secondary email template for it's use
 V1.8 - 24/8/11 - Added [admin_email] hook to be parsed for both user and admin email templates instead of just the email headers
 V1.9 - 24/10/11 - Removed conflict with User Access Manager plugin causing the resend welcome email rows to now show on the user list
+V2.0 - 27/10/11 - Moved the user column inline next to the edit and delete user actions to save space
 
 == Installation ==
 
@@ -37,5 +38,7 @@ V1.9 - 24/10/11 - Removed conflict with User Access Manager plugin causing the r
 Once complete, all new user emails will be sent in the new format.
 
 == Screenshots ==
+
+Don't look at screenshots of admin pages... Just give it a go :) If you must then see the following address for more information...
 
 Screenshots available at: http://www.sean-barton.co.uk/wordpress-welcome-email-editor/

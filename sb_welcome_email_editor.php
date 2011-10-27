@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the wordpress welcome email (and resend passwords) for both admin and standard members. Simple!
-Version: 1.9
+Version: 2.0
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
@@ -13,6 +13,7 @@ V1.6 - 25/3/11 - Added user_id and custom_fields as hooks for use
 V1.7 - 17/4/11 - Added password reminder service and secondary email template for it's use
 V1.8 - 24/8/11 - Added [admin_email] hook to be parsed for both user and admin email templates instead of just the email headers
 V1.9 - 24/10/11 - Removed conflict with User Access Manager plugin causing the resend welcome email rows to now show on the user list
+V2.0 - 27/10/11 - Moved the user column inline next to the edit and delete user actions to save space
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -36,8 +37,9 @@ function sb_we_loaded() {
 	add_action('init', 'sb_we_init');
 	add_action('admin_menu', 'sb_we_admin_page');
 	add_action('profile_update', 'sb_we_profile_update');
-	add_action('manage_users_custom_column', 'sb_we_user_col_row', 98, 3);
-	add_filter('manage_users_columns', 'sb_we_user_col');
+	//add_action('manage_users_custom_column', 'sb_we_user_col_row', 98, 3);
+	//add_filter('manage_users_columns', 'sb_we_user_col');
+	add_filter('user_row_actions', 'sb_we_user_col_row', 10, 2 );
 	
 	global $sb_we_active;
 	
@@ -88,13 +90,13 @@ function sb_we_profile_update() {
 	
 }
 
-function sb_we_user_col($cols) {
+/*function sb_we_user_col($cols) {
 	$cols['welcome_email'] = 'Resend Welcome Email';
 	
 	return $cols;
-}
+}*/
 
-function sb_we_user_col_row($value, $col_name, $id) {
+/*function sb_we_user_col_row($value, $col_name, $id) {
 	$return = '-';
 	
 	if ($col_name == 'welcome_email') {
@@ -117,6 +119,35 @@ function sb_we_user_col_row($value, $col_name, $id) {
 	}
 	
 	return $return;
+}*/
+
+function sb_we_user_col_row($actions, $user) {
+	$return = '';
+	
+	$id = $user->ID;
+	
+	$plain_pass = get_user_meta($id, 'sb_we_plaintext_pass', true);
+	$last_sent = get_user_meta($id, 'sb_we_last_sent', true);
+	$style = 'cursor: pointer;';
+	$title = 'Click to send a reminder email to this user.';
+			
+	if ($plain_pass) {
+		$return = '<input style="' . $style . '" title="' . $title . ' We have their password to send (' . $plain_pass . ')." type="submit" name="sb_we_resend_' . $id . '" value="Resend Welcome (Inc Pw)" />';
+	} else {
+		$return = '<input style="' . $style . ' We do not have their password to send." type="submit" name="sb_we_resend_' . $id . '" value="Resend Welcome (Ex Pw)" />';
+	}
+
+	/*if ($last_sent) {
+		$last_sent_string = date('jS F Y H:i:s', $last_sent);
+		if ($last_sent > time()-3600) {
+			$last_sent_string = '<span style="color: green;">' . $last_sent_string . '</span>';
+		}
+		$return .= '<br /><em>Last Re/Sent: ' . $last_sent_string . '</em>';
+	}*/
+
+	$actions['welcome_email'] = $return;
+	
+	return $actions;
 }
 
 function sb_we_init() {
@@ -145,7 +176,10 @@ if (!function_exists('wp_new_user_notification')) {
 		global $sb_we_home;
 		
 		if ($user = new WP_User($user_id)) {
-			update_usermeta($user_id, 'sb_we_plaintext_pass', $plaintext_pass); //store user password in case of reminder
+			if ($plaintext_pass != '[User password will appear here]') {
+				update_usermeta($user_id, 'sb_we_plaintext_pass', $plaintext_pass); //store user password in case of reminder
+			}
+			
 			update_usermeta($user_id, 'sb_we_last_sent', time());
 			
 			$blog_name = get_option('blogname');
