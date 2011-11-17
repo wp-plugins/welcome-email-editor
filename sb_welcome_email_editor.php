@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the wordpress welcome email (and resend passwords) for both admin and standard members. Simple!
-Version: 2.0
+Version: 2.1
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
@@ -14,6 +14,7 @@ V1.7 - 17/4/11 - Added password reminder service and secondary email template fo
 V1.8 - 24/8/11 - Added [admin_email] hook to be parsed for both user and admin email templates instead of just the email headers
 V1.9 - 24/10/11 - Removed conflict with User Access Manager plugin causing the resend welcome email rows to now show on the user list
 V2.0 - 27/10/11 - Moved the user column inline next to the edit and delete user actions to save space
+V2.1 - 17/11/11 - Added multisite support so that the welcome email will be edited and sent in the same way as the single site variant
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -40,6 +41,7 @@ function sb_we_loaded() {
 	//add_action('manage_users_custom_column', 'sb_we_user_col_row', 98, 3);
 	//add_filter('manage_users_columns', 'sb_we_user_col');
 	add_filter('user_row_actions', 'sb_we_user_col_row', 10, 2 );
+	add_filter('wpmu_welcome_user_notification', 'sw_we_mu_new_user_notification', 10, 3 );
 	
 	global $sb_we_active;
 	
@@ -74,6 +76,10 @@ function sb_we_send_new_user_notification($user_id) {
 	}
 	
 	return $return;
+}
+
+function sw_we_mu_new_user_notification($user_id, $password, $meta='') {
+	return wp_new_user_notification($user_id, $password);
 }
 
 function sb_we_profile_update() {
@@ -173,7 +179,7 @@ function sb_we_init() {
 
 if (!function_exists('wp_new_user_notification')) {
 	function wp_new_user_notification($user_id, $plaintext_pass = '') {
-		global $sb_we_home;
+		global $sb_we_home, $current_site;;
 		
 		if ($user = new WP_User($user_id)) {
 			if ($plaintext_pass != '[User password will appear here]') {
@@ -183,6 +189,10 @@ if (!function_exists('wp_new_user_notification')) {
 			update_usermeta($user_id, 'sb_we_last_sent', time());
 			
 			$blog_name = get_option('blogname');
+			if (is_multisite()) {
+				$blog_name = $current_site->site_name;
+			}
+			
 			$settings = get_option('sb_we_settings');
 			$admin_email = get_option('admin_email');
 			
@@ -304,6 +314,8 @@ if (!function_exists('wp_new_user_notification')) {
 				wp_mail($user_email, $user_subject, $user_message, $headers);
 			}
 		}
+		
+		return true;
 	}
 } else {
 	$sb_we_active = false;
