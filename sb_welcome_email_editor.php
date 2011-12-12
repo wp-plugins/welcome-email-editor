@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the wordpress welcome email (and resend passwords) for both admin and standard members. Simple!
-Version: 2.1
+Version: 2.2
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
@@ -15,6 +15,7 @@ V1.8 - 24/8/11 - Added [admin_email] hook to be parsed for both user and admin e
 V1.9 - 24/10/11 - Removed conflict with User Access Manager plugin causing the resend welcome email rows to now show on the user list
 V2.0 - 27/10/11 - Moved the user column inline next to the edit and delete user actions to save space
 V2.1 - 17/11/11 - Added multisite support so that the welcome email will be edited and sent in the same way as the single site variant
+V2.2 - 12/12/11 - Added edit box for the subject line and body text for the reminder email. Added option to turn off the reminder service
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -35,9 +36,15 @@ __('Settings','sb_we')=>'sb_we_settings'
 );
 
 function sb_we_loaded() {
+	$settings = get_option('sb_we_settings');
+	
 	add_action('init', 'sb_we_init');
 	add_action('admin_menu', 'sb_we_admin_page');
-	add_action('profile_update', 'sb_we_profile_update');
+	
+	if (!$settings->disable_reminder_service) {
+		add_action('profile_update', 'sb_we_profile_update');
+	}
+	
 	//add_action('manage_users_custom_column', 'sb_we_user_col_row', 98, 3);
 	//add_filter('manage_users_columns', 'sb_we_user_col');
 	add_filter('user_row_actions', 'sb_we_user_col_row', 10, 2 );
@@ -55,7 +62,7 @@ function sb_we_loaded() {
 			if (substr($key, 0, 6) == 'sb_we_') {
 				if (substr($key, 0, 13) == 'sb_we_resend_') {
 					if ($user_id = substr($key, 13)) {
-						sb_we_send_new_user_notification($user_id);
+						sb_we_send_new_user_notification($user_id, true);
 						wp_redirect(admin_url('users.php'));
 					}
 				}
@@ -64,14 +71,14 @@ function sb_we_loaded() {
 	}
 }
 
-function sb_we_send_new_user_notification($user_id) {
+function sb_we_send_new_user_notification($user_id, $reminder=false) {
 	$return = false;
 	
 	if (!$plaintext_pass = get_usermeta($user_id, 'sb_we_plaintext_pass')) {
 		$plaintext_pass = '[Your Password Here]';
 	}
 	
-	if (wp_new_user_notification($user_id, $plaintext_pass)) {
+	if (wp_new_user_notification($user_id, $plaintext_pass, $reminder)) {
 		$return = 'Welcome email sent.';
 	}
 	
@@ -134,13 +141,13 @@ function sb_we_user_col_row($actions, $user) {
 	
 	$plain_pass = get_user_meta($id, 'sb_we_plaintext_pass', true);
 	$last_sent = get_user_meta($id, 'sb_we_last_sent', true);
-	$style = 'cursor: pointer;';
+	$style = 'cursor: pointer; display: inline;';
 	$title = 'Click to send a reminder email to this user.';
 			
-	if ($plain_pass) {
-		$return = '<input style="' . $style . '" title="' . $title . ' We have their password to send (' . $plain_pass . ')." type="submit" name="sb_we_resend_' . $id . '" value="Resend Welcome (Inc Pw)" />';
+	if ($plain_pass && $plain_pass != '[Your Password Here]') {
+		$return = '<input style="' . $style . '" title="' . $title . ' We have their password to send (' . $plain_pass . ')." type="submit" name="sb_we_resend_' . $id . '" value="Remind PW" />';
 	} else {
-		$return = '<input style="' . $style . ' We do not have their password to send." type="submit" name="sb_we_resend_' . $id . '" value="Resend Welcome (Ex Pw)" />';
+		$return = '';
 	}
 
 	/*if ($last_sent) {
@@ -151,7 +158,9 @@ function sb_we_user_col_row($actions, $user) {
 		$return .= '<br /><em>Last Re/Sent: ' . $last_sent_string . '</em>';
 	}*/
 
-	$actions['welcome_email'] = $return;
+	if ($return) {
+		$actions['welcome_email'] = $return;
+	}
 	
 	return $actions;
 }
@@ -165,6 +174,7 @@ function sb_we_init() {
 		$sb_we_settings->admin_body = 'New user registration on your blog ' . $blog_name . '<br /><br />Username: [user_login]<br />Email: [user_email]';
 		$sb_we_settings->admin_notify_user_id = 1;
 		$sb_we_settings->remind_on_profile_update = 0;
+		$sb_we_settings->disable_reminder_service = 0;
 		$sb_we_settings->reminder_subject = '[[blog_name]] Your username and password reminder';
 		$sb_we_settings->reminder_body = 'Just a reminder for you...<br /><br />Username: [user_login]<br />Password: [user_password]<br />[login_url]';
 		$sb_we_settings->header_from_name = '';
@@ -178,12 +188,16 @@ function sb_we_init() {
 }
 
 if (!function_exists('wp_new_user_notification')) {
-	function wp_new_user_notification($user_id, $plaintext_pass = '') {
+	function wp_new_user_notification($user_id, $plaintext_pass = '', $reminder = false) {
 		global $sb_we_home, $current_site;;
 		
 		if ($user = new WP_User($user_id)) {
-			if ($plaintext_pass != '[User password will appear here]') {
-				update_usermeta($user_id, 'sb_we_plaintext_pass', $plaintext_pass); //store user password in case of reminder
+			$settings = get_option('sb_we_settings');
+			
+			if (!$settings->disable_reminder_service) {
+				if (!in_array($plaintext_pass, array('[User password will appear here]', '[Your Password Here]'))) {
+					update_usermeta($user_id, 'sb_we_plaintext_pass', $plaintext_pass); //store user password in case of reminder
+				}
 			}
 			
 			update_usermeta($user_id, 'sb_we_last_sent', time());
@@ -193,14 +207,19 @@ if (!function_exists('wp_new_user_notification')) {
 				$blog_name = $current_site->site_name;
 			}
 			
-			$settings = get_option('sb_we_settings');
 			$admin_email = get_option('admin_email');
 			
 			$user_login = stripslashes($user->user_login);
 			$user_email = stripslashes($user->user_email);
 			
-			$user_subject = $settings->user_subject;
-			$user_message = $settings->user_body;
+			if (!$reminder) {
+				$user_subject = $settings->user_subject;
+				$user_message = $settings->user_body;
+			} else {
+				$user_subject = $settings->reminder_subject;
+				$user_message = $settings->reminder_body;
+			}
+			
 			$admin_subject = $settings->admin_subject;
 			$admin_message = $settings->admin_body;
 			
@@ -393,6 +412,24 @@ function sb_we_settings() {
 		, 'style'=>'width: 650px; height: 300px;'
 		, 'description'=>'Body content for the email sent to the admin user(s).'
 	)
+	,'settings[disable_reminder_service]'=>array(
+		'title'=>'Disable Reminder Service'
+		, 'type'=>'yes_no'
+		, 'style'=>'width: 500px;'
+		, 'description'=>'Allows the admin to send users their passwords again if they forget them. Turn this off here if you want to'
+	)	
+	,'settings[reminder_subject]'=>array(
+		'title'=>'Reminder Email Subject'
+		, 'type'=>'text'
+		, 'style'=>'width: 500px;'
+		, 'description'=>'Subject line for the reminder email that admin can send to a user.'
+	)
+	, 'settings[reminder_body]'=>array(
+		'title'=>'Reminder Email Body'
+		, 'type'=>'textarea'
+		, 'style'=>'width: 650px; height: 500px;'
+		, 'description'=>'Body content for the reminder email that admin can send to a user.'
+	)	
 	, 'settings[header_from_email]'=>array(
 		'title'=>'From Email Address'
 		, 'type'=>'text'
@@ -473,6 +510,9 @@ function sb_we_settings() {
 			case 'text':
 				$html .= sb_we_get_text($name, $value, $options['class'], $options['style']);
 				break;
+			case 'yes_no':
+				$html .= sb_we_get_yes_no($name, $value, $options['class'], $options['style']);
+				break;
 			case 'textarea':
 				$html .= sb_we_get_textarea($name, $value, $options['class'], $options['style'], $options['rows'], $options['cols']);
 				break;
@@ -532,17 +572,26 @@ function sb_we_get_select($name, $options, $value, $class=false, $style=false) {
 	return $html;
 }
 
-function sb_we_get_input($name, $type=false, $value=false, $class=false, $style=false) {
+function sb_we_get_input($name, $type=false, $value=false, $class=false, $style=false, $attributes=false) {
 	$style = ($style ? ' style="' . $style . '"':'');
 	$class = ($class ? ' class="' . $class . '"':'');
 	$value = ($value ? ' value="' . wp_specialchars($value, true) . '"':'');
 	$type = ($type ? ' type="' . $type . '"':'');
 	
-	return '<input name="' . $name . '" ' . $value . $type . $style . $class . ' />';
+	return '<input name="' . $name . '" ' . $value . $type . $style . $class . ' ' . $attributes . ' />';
 }
 
 function sb_we_get_text($name, $value=false, $class=false, $style=false) {
 	return sb_we_get_input($name, 'text', $value, $class, $style);
+}
+
+function sb_we_get_yes_no($name, $value=false, $class=false, $style=false) {
+	$return = '';
+	
+	$return .= 'Yes: ' . sb_we_get_input($name, 'radio', 1, $class, $style, ($value == 1 ? 'checked="checked"':'')) . '<br />';
+	$return .= 'No: ' . sb_we_get_input($name, 'radio', 0, $class, $style, ($value == 1 ? '':'checked="checked"'));
+	
+	return $return;
 }
 
 function sb_we_get_submit($name, $value=false, $class=false, $style=false) {

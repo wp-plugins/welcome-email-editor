@@ -28,6 +28,7 @@ V1.8 - 24/8/11 - Added [admin_email] hook to be parsed for both user and admin e
 V1.9 - 24/10/11 - Removed conflict with User Access Manager plugin causing the resend welcome email rows to now show on the user list
 V2.0 - 27/10/11 - Moved the user column inline next to the edit and delete user actions to save space
 V2.1 - 17/11/11 - Added multisite support so that the welcome email will be edited and sent in the same way as the single site variant
+V2.2 - 12/12/11 - Added edit box for the subject line and body text for the reminder email. Added option to turn off the reminder service
 
 == Installation ==
 
