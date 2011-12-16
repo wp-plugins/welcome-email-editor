@@ -2,7 +2,7 @@
 Contributors: seanbarton
 Tags: welcome email, wordpress welcome email, welcome email editor, mail, email, new user email, password reminder
 Requires at least: 3.0
-Tested up to: 3.2.1
+Tested up to: 3.3
 
 A Plugin to provide an interface for the Wordpress Welcome Email. Allows adding of headers to prevent emails going into spam and changes to the text. Also offers a password reminder service accessable via the quick options on the admin users page.
 
@@ -29,6 +29,7 @@ V1.9 - 24/10/11 - Removed conflict with User Access Manager plugin causing the r
 V2.0 - 27/10/11 - Moved the user column inline next to the edit and delete user actions to save space
 V2.1 - 17/11/11 - Added multisite support so that the welcome email will be edited and sent in the same way as the single site variant
 V2.2 - 12/12/11 - Added edit box for the subject line and body text for the reminder email. Added option to turn off the reminder service
+V2.3 - 16/12/11 - Broke the reminder service in the last update. This patch sorts it out. Also tested with WP 3.3
 
 == Installation ==
 

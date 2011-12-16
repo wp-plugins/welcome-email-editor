@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the wordpress welcome email (and resend passwords) for both admin and standard members. Simple!
-Version: 2.2
+Version: 2.3
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
@@ -16,6 +16,7 @@ V1.9 - 24/10/11 - Removed conflict with User Access Manager plugin causing the r
 V2.0 - 27/10/11 - Moved the user column inline next to the edit and delete user actions to save space
 V2.1 - 17/11/11 - Added multisite support so that the welcome email will be edited and sent in the same way as the single site variant
 V2.2 - 12/12/11 - Added edit box for the subject line and body text for the reminder email. Added option to turn off the reminder service
+V2.3 - 16/12/11 - Broke the reminder service in the last update. This patch sorts it out. Also tested with WP 3.3
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -575,7 +576,7 @@ function sb_we_get_select($name, $options, $value, $class=false, $style=false) {
 function sb_we_get_input($name, $type=false, $value=false, $class=false, $style=false, $attributes=false) {
 	$style = ($style ? ' style="' . $style . '"':'');
 	$class = ($class ? ' class="' . $class . '"':'');
-	$value = ($value ? ' value="' . wp_specialchars($value, true) . '"':'');
+	$value = 'value="' . wp_specialchars($value, true) . '"';
 	$type = ($type ? ' type="' . $type . '"':'');
 	
 	return '<input name="' . $name . '" ' . $value . $type . $style . $class . ' ' . $attributes . ' />';
