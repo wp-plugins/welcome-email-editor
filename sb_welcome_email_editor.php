@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the wordpress welcome email (and resend passwords) for both admin and standard members. Simple!
-Version: 2.3
+Version: 2.4
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
@@ -17,6 +17,7 @@ V2.0 - 27/10/11 - Moved the user column inline next to the edit and delete user 
 V2.1 - 17/11/11 - Added multisite support so that the welcome email will be edited and sent in the same way as the single site variant
 V2.2 - 12/12/11 - Added edit box for the subject line and body text for the reminder email. Added option to turn off the reminder service
 V2.3 - 16/12/11 - Broke the reminder service in the last update. This patch sorts it out. Also tested with WP 3.3
+V2.4 - 03/01/12 - Minor update to disable the reminder service send button in the user list. Previously only stopped the logging but the button remained
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -36,6 +37,8 @@ $sb_we_pages = array(
 __('Settings','sb_we')=>'sb_we_settings'
 );
 
+//sb_we_printr(get_option('active_plugins'));
+
 function sb_we_loaded() {
 	$settings = get_option('sb_we_settings');
 	
@@ -44,11 +47,11 @@ function sb_we_loaded() {
 	
 	if (!$settings->disable_reminder_service) {
 		add_action('profile_update', 'sb_we_profile_update');
+		add_filter('user_row_actions', 'sb_we_user_col_row', 10, 2);
 	}
 	
 	//add_action('manage_users_custom_column', 'sb_we_user_col_row', 98, 3);
 	//add_filter('manage_users_columns', 'sb_we_user_col');
-	add_filter('user_row_actions', 'sb_we_user_col_row', 10, 2 );
 	add_filter('wpmu_welcome_user_notification', 'sw_we_mu_new_user_notification', 10, 3 );
 	
 	global $sb_we_active;
