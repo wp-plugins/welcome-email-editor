@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the wordpress welcome email (and resend passwords) for both admin and standard members. Simple!
-Version: 2.4
+Version: 2.5
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
@@ -18,6 +18,7 @@ V2.1 - 17/11/11 - Added multisite support so that the welcome email will be edit
 V2.2 - 12/12/11 - Added edit box for the subject line and body text for the reminder email. Added option to turn off the reminder service
 V2.3 - 16/12/11 - Broke the reminder service in the last update. This patch sorts it out. Also tested with WP 3.3
 V2.4 - 03/01/12 - Minor update to disable the reminder service send button in the user list. Previously only stopped the logging but the button remained
+V2.5 - 18/01/12 - Minor update to resolve double sending of reminder emails in some cases. Thanks to igorii for sending the fix my way before I had a moment to look myself :)
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -56,7 +57,7 @@ function sb_we_loaded() {
 	
 	global $sb_we_active;
 	
-	if (is_admin()) {
+	if (is_admin() && !isset($_REQUEST['_wp_http_referer'])) {
 		if (!$sb_we_active) {
 			$msg = '<div class="error"><p>' . SB_WE_PRODUCT_NAME . ' can not function because another plugin is conflicting. Please disable other plugins until this message disappears to fix the problem.</p></div>';
 			add_action('admin_notices', create_function( '', 'echo \'' . $msg . '\';' ));
