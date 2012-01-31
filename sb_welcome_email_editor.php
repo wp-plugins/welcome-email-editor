@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the wordpress welcome email (and resend passwords) for both admin and standard members. Simple!
-Version: 2.5
+Version: 2.6
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
@@ -19,6 +19,7 @@ V2.2 - 12/12/11 - Added edit box for the subject line and body text for the remi
 V2.3 - 16/12/11 - Broke the reminder service in the last update. This patch sorts it out. Also tested with WP 3.3
 V2.4 - 03/01/12 - Minor update to disable the reminder service send button in the user list. Previously only stopped the logging but the button remained
 V2.5 - 18/01/12 - Minor update to resolve double sending of reminder emails in some cases. Thanks to igorii for sending the fix my way before I had a moment to look myself :)
+V2.6 - 30/01/12 - Update adds functionality for reset/forgot password text changes (not formatting or HTML at the moment.. just the copy). Also adds a new shortcode for admin emails for buddypress custom fields: [bp_custom_fields]
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -53,7 +54,10 @@ function sb_we_loaded() {
 	
 	//add_action('manage_users_custom_column', 'sb_we_user_col_row', 98, 3);
 	//add_filter('manage_users_columns', 'sb_we_user_col');
-	add_filter('wpmu_welcome_user_notification', 'sw_we_mu_new_user_notification', 10, 3 );
+	add_filter('wpmu_welcome_user_notification', 'sb_we_mu_new_user_notification', 10, 3 );
+	
+	add_filter('retrieve_password_title', 'sb_we_lost_password_title', 10, 1 );
+	add_filter('retrieve_password_message', 'sb_we_lost_password_message', 10, 2 );
 	
 	global $sb_we_active;
 	
@@ -76,6 +80,45 @@ function sb_we_loaded() {
 	}
 }
 
+function sb_we_lost_password_title($content) {
+	$settings = get_option('sb_we_settings');
+			
+	if ($settings->password_reminder_subject) {
+		if ( is_multisite() ) $blogname = $GLOBALS['current_site']->site_name;
+		else $blogname = wp_specialchars_decode(get_option('blogname'), ENT_QUOTES);
+
+		$content = $settings->password_reminder_subject;
+		$content = str_replace('[[blog_name]]', $blogname, $content);
+	}
+	
+	return $content;
+}
+
+function sb_we_lost_password_message($message, $key) {
+	global $wpdb;
+	
+	$settings = get_option('sb_we_settings');
+	
+	if ($settings->password_reminder_body) {
+		if ($user_login = $wpdb->get_var($wpdb->prepare("SELECT user_login FROM $wpdb->users WHERE user_activation_key = %s", $key))) {
+			$site_url = site_url();
+			
+			if ( is_multisite() ) $blogname = $GLOBALS['current_site']->site_name;
+			else $blogname = wp_specialchars_decode(get_option('blogname'), ENT_QUOTES);
+			
+			$reset_url = trailingslashit(site_url()) . "wp-login.php?action=rp&key=$key&login=" . rawurlencode($user_login);
+			$message = $settings->password_reminder_body; //'Someone requested that the password be reset for the following account: [site_url]' . "\n\n" . 'Username: [user_login]' . "\n\n" . 'If this was a mistake, just ignore this email and nothing will happen.' . "\n\n" . 'To reset your password, visit the following address: [reset_url]';
+			
+			$message = str_replace('[user_login]', $user_login, $message);
+			$message = str_replace('[blog_name]', $blogname, $message);
+			$message = str_replace('[site_url]', $site_url, $message);
+			$message = str_replace('[reset_url]', $reset_url, $message);
+		}
+	}
+	
+	return $message;
+}
+
 function sb_we_send_new_user_notification($user_id, $reminder=false) {
 	$return = false;
 	
@@ -90,7 +133,7 @@ function sb_we_send_new_user_notification($user_id, $reminder=false) {
 	return $return;
 }
 
-function sw_we_mu_new_user_notification($user_id, $password, $meta='') {
+function sb_we_mu_new_user_notification($user_id, $password, $meta='') {
 	return wp_new_user_notification($user_id, $password);
 }
 
@@ -107,37 +150,6 @@ function sb_we_profile_update() {
 	}
 	
 }
-
-/*function sb_we_user_col($cols) {
-	$cols['welcome_email'] = 'Resend Welcome Email';
-	
-	return $cols;
-}*/
-
-/*function sb_we_user_col_row($value, $col_name, $id) {
-	$return = '-';
-	
-	if ($col_name == 'welcome_email') {
-		$plain_pass = get_usermeta($id, 'sb_we_plaintext_pass');
-		$last_sent = get_usermeta($id, 'sb_we_last_sent');
-				
-		if ($plain_pass) {
-			$return = '<input type="submit" name="sb_we_resend_' . $id . '" value="Resend Welcome (Inc Pw)" />';
-		} else {
-			$return = '<input type="submit" name="sb_we_resend_' . $id . '" value="Resend Welcome (Ex Pw)" />';
-		}
-
-		if ($last_sent) {
-			$last_sent_string = date('jS F Y H:i:s', $last_sent);
-			if ($last_sent > time()-3600) {
-				$last_sent_string = '<span style="color: green;">' . $last_sent_string . '</span>';
-			}
-			$return .= '<br /><em>Last Re/Sent: ' . $last_sent_string . '</em>';
-		}
-	}
-	
-	return $return;
-}*/
 
 function sb_we_user_col_row($actions, $user) {
 	$return = '';
@@ -187,6 +199,8 @@ function sb_we_init() {
 		$sb_we_settings->header_reply_to = '[admin_email]';
 		$sb_we_settings->header_send_as = 'html';
 		$sb_we_settings->header_additional = '';
+		$sb_we_settings->password_reminder_subject = '[blog_name] Forgot Password';
+		$sb_we_settings->password_reminder_body = 'Someone requested that the password be reset for the following account: [site_url]' . "\n\n" . 'Username: [user_login]' . "\n\n" . 'If this was a mistake, just ignore this email and nothing will happen.' . "\n\n" . 'To reset your password, visit the following address: [reset_url]';
 		
 		add_option('sb_we_settings', $sb_we_settings);
 	}
@@ -298,6 +312,7 @@ if (!function_exists('wp_new_user_notification')) {
 				$admin_message = str_replace('[plaintext_password]', $plaintext_pass, $admin_message);
 				$admin_message = str_replace('[user_password]', $plaintext_pass, $admin_message);
 				$admin_message = str_replace('[custom_fields]', '<pre>' . print_r($custom_fields, true) . '</pre>', $admin_message);
+				$admin_message = str_replace('[bp_custom_fields]', '<pre>' . print_r(sb_we_get_bp_custom_fields($user_id), true) . '</pre>', $admin_message);
 			
 				$admin_subject = str_replace('[blog_name]', $blog_name, $admin_subject);
 				$admin_subject = str_replace('[site_url]', $sb_we_home, $admin_subject);
@@ -343,6 +358,25 @@ if (!function_exists('wp_new_user_notification')) {
 	}
 } else {
 	$sb_we_active = false;
+}
+
+function sb_we_get_bp_custom_fields($user_id) {
+	global $wpdb;
+	
+	$sql = 'SELECT f.name, d.value
+		FROM 
+			' . $wpdb->prefix . 'bp_xprofile_fields f
+			JOIN ' . $wpdb->prefix . 'bp_xprofile_data d ON (d.field_id = f.id)
+		WHERE d.user_id = ' . $user_id;
+	
+	$array = $wpdb->get_results($sql);
+	$assoc_array = array();
+	
+	foreach($array as $key=>$value) {
+		$assoc_array[$value->name] = $value->value;
+	}
+	
+	return $assoc_array;
 }
 
 function sb_we_update_settings() {
@@ -434,6 +468,18 @@ function sb_we_settings() {
 		, 'type'=>'textarea'
 		, 'style'=>'width: 650px; height: 500px;'
 		, 'description'=>'Body content for the reminder email that admin can send to a user.'
+	)
+	,'settings[password_reminder_subject]'=>array(
+		'title'=>'Forgot Password Email Subject'
+		, 'type'=>'text'
+		, 'style'=>'width: 500px;'
+		, 'description'=>'Subject line for the forgot password email that a user can send to themselves using the login screen. Use [blogname] where appropriate.'
+	)
+	, 'settings[password_reminder_body]'=>array(
+		'title'=>'Forgot Password Message'
+		, 'type'=>'textarea'
+		, 'style'=>'width: 650px; height: 500px;'
+		, 'description'=>'Content for the forgot password email that the user can send to themselves via the login screen. Use [blog_name], [site_url], [reset_url] and [user_login] where appropriate.'
 	)	
 	, 'settings[header_from_email]'=>array(
 		'title'=>'From Email Address'
@@ -487,7 +533,7 @@ function sb_we_settings() {
 	)
 	);
 	
-	$html .= '<div style="margin-bottom: 10px;">' . __('This page allows you to update the Wordpress welcome email and add headers to make it less likely to fall into spam. You can edit the templates for both the admin and user emails and assign admin members to receive the notifications. Use the following hooks in any of the boxes below: [site_url], [login_url], [user_email], [user_login], [plaintext_password], [blog_name], [admin_email], [user_id], [custom_fields], [first_name], [last_name]', 'sb_we') . '</div>';	
+	$html .= '<div style="margin-bottom: 10px;">' . __('This page allows you to update the Wordpress welcome email and add headers to make it less likely to fall into spam. You can edit the templates for both the admin and user emails and assign admin members to receive the notifications. Use the following hooks in any of the boxes below: [site_url], [login_url], [user_email], [user_login], [plaintext_password], [blog_name], [admin_email], [user_id], [custom_fields], [first_name], [last_name], [bp_custom_fields] (buddypress custom fields .. admin only)', 'sb_we') . '</div>';	
 	$html .= sb_we_start_box('Settings');
 	
 	$html .= '<form method="POST">';

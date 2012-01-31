@@ -1,10 +1,10 @@
 === Plugin Name ===
 Contributors: seanbarton
-Tags: welcome email, wordpress welcome email, welcome email editor, mail, email, new user email, password reminder
+Tags: welcome email, wordpress welcome email, welcome email editor, mail, email, new user email, password reminder, lost password
 Requires at least: 3.0
 Tested up to: 3.3
 
-A Plugin to provide an interface for the Wordpress Welcome Email. Allows adding of headers to prevent emails going into spam and changes to the text. Also offers a password reminder service accessable via the quick options on the admin users page.
+A Plugin to provide an interface for the Wordpress Welcome/Forgot Password Emails. Allows adding of headers to prevent emails going into spam and changes to the text. Also offers a password reminder service accessable via the quick options on the admin users page.
 
 == Description ==
 
@@ -42,6 +42,8 @@ V2.3 - 16/12/11 - Broke the reminder service in the last update. This patch sort
 V2.4 - 03/01/12 - Minor update to disable the reminder service send button in the user list. Previously only stopped the logging but the button remained
 
 V2.5 - 18/01/12 - Minor update to resolve double sending of reminder emails in some cases. Thanks to igorii for sending the fix my way before I had a moment to look myself :)
+
+V2.6 - 30/01/12 - Update adds functionality for reset/forgot password text changes (not formatting or HTML at the moment.. just the copy). Also adds a new shortcode for admin emails for buddypress custom fields: [bp_custom_fields]
 
 == Installation ==
 
