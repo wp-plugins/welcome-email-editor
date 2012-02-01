@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the wordpress welcome email (and resend passwords) for both admin and standard members. Simple!
-Version: 2.6
+Version: 2.7
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
@@ -20,6 +20,7 @@ V2.3 - 16/12/11 - Broke the reminder service in the last update. This patch sort
 V2.4 - 03/01/12 - Minor update to disable the reminder service send button in the user list. Previously only stopped the logging but the button remained
 V2.5 - 18/01/12 - Minor update to resolve double sending of reminder emails in some cases. Thanks to igorii for sending the fix my way before I had a moment to look myself :)
 V2.6 - 30/01/12 - Update adds functionality for reset/forgot password text changes (not formatting or HTML at the moment.. just the copy). Also adds a new shortcode for admin emails for buddypress custom fields: [bp_custom_fields]
+V2.7 - 01/02/12 - Minor update adds site wide change of from address and name from plugin settings meaning a more consistent feel for your site. Also reminder email and welcome email shortcode bugs fixed.
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -88,7 +89,7 @@ function sb_we_lost_password_title($content) {
 		else $blogname = wp_specialchars_decode(get_option('blogname'), ENT_QUOTES);
 
 		$content = $settings->password_reminder_subject;
-		$content = str_replace('[[blog_name]]', $blogname, $content);
+		$content = str_replace('[blog_name]', $blogname, $content);
 	}
 	
 	return $content;
@@ -183,7 +184,7 @@ function sb_we_user_col_row($actions, $user) {
 }
 
 function sb_we_init() {
-	if (!get_option('sb_we_settings')) {
+	if (!$sb_we_settings = get_option('sb_we_settings')) {
 		$sb_we_settings = new stdClass();
 		$sb_we_settings->user_subject = '[[blog_name]] Your username and password';
 		$sb_we_settings->user_body = 'Username: [user_login]<br />Password: [user_password]<br />[login_url]';
@@ -199,11 +200,44 @@ function sb_we_init() {
 		$sb_we_settings->header_reply_to = '[admin_email]';
 		$sb_we_settings->header_send_as = 'html';
 		$sb_we_settings->header_additional = '';
-		$sb_we_settings->password_reminder_subject = '[blog_name] Forgot Password';
-		$sb_we_settings->password_reminder_body = 'Someone requested that the password be reset for the following account: [site_url]' . "\n\n" . 'Username: [user_login]' . "\n\n" . 'If this was a mistake, just ignore this email and nothing will happen.' . "\n\n" . 'To reset your password, visit the following address: [reset_url]';
+		$sb_we_settings->password_reminder_subject = '[[blog_name]] Forgot Password';
+		$sb_we_settings->password_reminder_body = 'Someone requested that the password be reset for the following account: [site_url]<br /><br />Username: [user_login]<br /><br />If this was a mistake, just ignore this email and nothing will happen.<br /><br />To reset your password, visit the following address: [reset_url]';
 		
 		add_option('sb_we_settings', $sb_we_settings);
 	}
+	
+	if ($from_email = $sb_we_settings->header_from_email) {
+		add_filter('wp_mail_from', 'sb_we_get_from_email', 1, 100);
+		
+		if ($from_name = $sb_we_settings->header_from_name) {
+			add_filter('wp_mail_from_name', 'sb_we_get_from_name', 1, 100);
+		}
+	}
+	if ($send_as = $sb_we_settings->header_send_as) {
+		if ($send_as == 'html') {
+			add_filter('wp_mail_content_type', create_function('$i', 'return "text/html";'), 1, 100);
+			add_filter('wp_mail_charset', 'sb_we_get_charset', 1, 100);
+		}
+	}	
+}
+
+function sb_we_get_from_email() {
+	$sb_we_settings = get_option('sb_we_settings');
+	$admin_email = get_option('admin_email');
+	return str_replace('[admin_email]', $admin_email, $sb_we_settings->header_from_email);
+}
+
+function sb_we_get_from_name() {
+	$sb_we_settings = get_option('sb_we_settings');
+	return str_replace('[admin_email]', $admin_email, $sb_we_settings->header_from_name);
+}
+
+function sb_we_get_charset() {
+	if (!$charset = get_bloginfo('charset')) {
+		$charset = 'iso-8859-1';
+	}
+	
+	return $charset;
 }
 
 if (!function_exists('wp_new_user_notification')) {
@@ -251,10 +285,11 @@ if (!function_exists('wp_new_user_notification')) {
 				$headers .= 'Reply-To: ' . $reply_to . "\r\n";
 			}
 			if ($from_email = $settings->header_from_email) {
-				apply_filters('wp_mail_from', create_function('$i', 'return $from_email;'), 1, 100);
+				$from_email = str_replace('[admin_email]', $admin_email, $from_email);
+				add_filter('wp_mail_from', create_function('$i', 'return $from_email;'), 1, 100);
 				
 				if ($from_name = $settings->header_from_name) {
-					apply_filters('wp_mail_from_name',create_function('$i', 'return $from_name;'), 1, 100);
+					add_filter('wp_mail_from_name',create_function('$i', 'return $from_name;'), 1, 100);
 					$headers .= 'From: ' . $from_name . ' <' . $from_email . ">\r\n";
 				} else {
 					$headers .= 'From: ' . $from_email . "\r\n";
@@ -267,8 +302,8 @@ if (!function_exists('wp_new_user_notification')) {
 					}
 					$headers .= 'Content-type: text/html; charset=' . $charset . "\r\n";
 					
-					apply_filters('wp_mail_content_type', create_function('$i', 'return "text/html";'), 1, 100);
-					apply_filters('wp_mail_charset', create_function('$i', 'return $charset;'), 1, 100);
+					add_filter('wp_mail_content_type', create_function('$i', 'return "text/html";'), 1, 100);
+					add_filter('wp_mail_charset', create_function('$i', 'return $charset;'), 1, 100);
 				}
 			}
 			if ($additional = $settings->header_additional) {
@@ -427,7 +462,19 @@ function sb_we_settings() {
 	$settings = get_option('sb_we_settings');
 	
 	$page_options = array(
-	'settings[user_subject]'=>array(
+	'settings[header_from_email]'=>array(
+		'title'=>'From Email Address'
+		, 'type'=>'text'
+		, 'style'=>'width: 500px;'
+		, 'description'=>'Global option change the from email address for all site emails'
+	)
+	, 'settings[header_from_name]'=>array(
+		'title'=>'From Name'
+		, 'type'=>'text'
+		, 'style'=>'width: 500px;'
+		, 'description'=>'Global option change the from name for all site emails'
+	)		
+	,'settings[user_subject]'=>array(
 		'title'=>'User Email Subject'
 		, 'type'=>'text'
 		, 'style'=>'width: 500px;'
@@ -480,18 +527,6 @@ function sb_we_settings() {
 		, 'type'=>'textarea'
 		, 'style'=>'width: 650px; height: 500px;'
 		, 'description'=>'Content for the forgot password email that the user can send to themselves via the login screen. Use [blog_name], [site_url], [reset_url] and [user_login] where appropriate.'
-	)	
-	, 'settings[header_from_email]'=>array(
-		'title'=>'From Email Address'
-		, 'type'=>'text'
-		, 'style'=>'width: 500px;'
-		, 'description'=>'Optional Header sent to change the from email address for new user notification.'
-	)
-	, 'settings[header_from_name]'=>array(
-		'title'=>'From Name'
-		, 'type'=>'text'
-		, 'style'=>'width: 500px;'
-		, 'description'=>'Optional Header sent to change the from name for new user notification.'
 	)	
 	, 'settings[header_reply_to]'=>array(
 		'title'=>'Reply To Email Address'
