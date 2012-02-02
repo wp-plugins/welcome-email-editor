@@ -47,6 +47,8 @@ V2.6 - 30/01/12 - Update adds functionality for reset/forgot password text chang
 
 V2.7 - 01/02/12 - Minor update adds site wide change of from address and name from plugin settings meaning a more consistent feel for your site. Also reminder email and welcome email shortcode bugs fixed.
 
+V2.8 - 02/02/12 - Minor update fixes sender bug introduced by V2.7
+
 == Installation ==
 
 1. Upload the contents of the ZIP file to the `/wp-content/plugins/` directory

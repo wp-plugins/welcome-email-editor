@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the wordpress welcome email (and resend passwords) for both admin and standard members. Simple!
-Version: 2.7
+Version: 2.8
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
@@ -21,6 +21,7 @@ V2.4 - 03/01/12 - Minor update to disable the reminder service send button in th
 V2.5 - 18/01/12 - Minor update to resolve double sending of reminder emails in some cases. Thanks to igorii for sending the fix my way before I had a moment to look myself :)
 V2.6 - 30/01/12 - Update adds functionality for reset/forgot password text changes (not formatting or HTML at the moment.. just the copy). Also adds a new shortcode for admin emails for buddypress custom fields: [bp_custom_fields]
 V2.7 - 01/02/12 - Minor update adds site wide change of from address and name from plugin settings meaning a more consistent feel for your site. Also reminder email and welcome email shortcode bugs fixed.
+V2.8 - 02/02/12 - Minor update fixes sender bug introduced by V2.7
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -284,12 +285,13 @@ if (!function_exists('wp_new_user_notification')) {
 			if ($reply_to = $settings->header_reply_to) {
 				$headers .= 'Reply-To: ' . $reply_to . "\r\n";
 			}
+			
 			if ($from_email = $settings->header_from_email) {
 				$from_email = str_replace('[admin_email]', $admin_email, $from_email);
-				add_filter('wp_mail_from', create_function('$i', 'return $from_email;'), 1, 100);
+				add_filter('wp_mail_from', 'sb_we_get_from_email', 1, 100);
 				
 				if ($from_name = $settings->header_from_name) {
-					add_filter('wp_mail_from_name',create_function('$i', 'return $from_name;'), 1, 100);
+					add_filter('wp_mail_from_name', 'sb_we_get_from_name', 1, 100);
 					$headers .= 'From: ' . $from_name . ' <' . $from_email . ">\r\n";
 				} else {
 					$headers .= 'From: ' . $from_email . "\r\n";
@@ -303,9 +305,10 @@ if (!function_exists('wp_new_user_notification')) {
 					$headers .= 'Content-type: text/html; charset=' . $charset . "\r\n";
 					
 					add_filter('wp_mail_content_type', create_function('$i', 'return "text/html";'), 1, 100);
-					add_filter('wp_mail_charset', create_function('$i', 'return $charset;'), 1, 100);
+					add_filter('wp_mail_charset', 'sb_we_get_charset', 1, 100);
 				}
 			}
+			
 			if ($additional = $settings->header_additional) {
 				$headers .= $additional;
 			}
