@@ -2,8 +2,8 @@
 /*
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
-Description: Allows you to change the wordpress welcome email (and resend passwords) for both admin and standard members. Simple!
-Version: 2.8
+Description: Allows you to change the content and layout for many of the inbuilt Wordpress emails. Simple!
+Version: 2.9
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
@@ -22,6 +22,7 @@ V2.5 - 18/01/12 - Minor update to resolve double sending of reminder emails in s
 V2.6 - 30/01/12 - Update adds functionality for reset/forgot password text changes (not formatting or HTML at the moment.. just the copy). Also adds a new shortcode for admin emails for buddypress custom fields: [bp_custom_fields]
 V2.7 - 01/02/12 - Minor update adds site wide change of from address and name from plugin settings meaning a more consistent feel for your site. Also reminder email and welcome email shortcode bugs fixed.
 V2.8 - 02/02/12 - Minor update fixes sender bug introduced by V2.7
+V2.9 - 05/02/12 - Minor update fixes bug which was overriding the from name and address for all wordpress and plugin emails. Now lowered the priority of the filter and have made the global usage of the filter optional via the admin screen. Added labels to the admin screen as the list was getting rather long!
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -57,9 +58,6 @@ function sb_we_loaded() {
 	//add_action('manage_users_custom_column', 'sb_we_user_col_row', 98, 3);
 	//add_filter('manage_users_columns', 'sb_we_user_col');
 	add_filter('wpmu_welcome_user_notification', 'sb_we_mu_new_user_notification', 10, 3 );
-	
-	add_filter('retrieve_password_title', 'sb_we_lost_password_title', 10, 1 );
-	add_filter('retrieve_password_message', 'sb_we_lost_password_message', 10, 2 );
 	
 	global $sb_we_active;
 	
@@ -101,7 +99,7 @@ function sb_we_lost_password_message($message, $key) {
 	
 	$settings = get_option('sb_we_settings');
 	
-	if ($settings->password_reminder_body) {
+	if (trim($settings->password_reminder_body)) {
 		if ($user_login = $wpdb->get_var($wpdb->prepare("SELECT user_login FROM $wpdb->users WHERE user_activation_key = %s", $key))) {
 			$site_url = site_url();
 			
@@ -201,23 +199,35 @@ function sb_we_init() {
 		$sb_we_settings->header_reply_to = '[admin_email]';
 		$sb_we_settings->header_send_as = 'html';
 		$sb_we_settings->header_additional = '';
+		$sb_we_settings->set_global_headers = 1;
 		$sb_we_settings->password_reminder_subject = '[[blog_name]] Forgot Password';
 		$sb_we_settings->password_reminder_body = 'Someone requested that the password be reset for the following account: [site_url]<br /><br />Username: [user_login]<br /><br />If this was a mistake, just ignore this email and nothing will happen.<br /><br />To reset your password, visit the following address: [reset_url]';
 		
 		add_option('sb_we_settings', $sb_we_settings);
 	}
 	
+	if ($sb_we_settings->set_global_headers) {
+		sb_we_set_email_filter_headers();
+	}	
+
+	add_filter('retrieve_password_title', 'sb_we_lost_password_title', 10, 1 );
+	add_filter('retrieve_password_message', 'sb_we_lost_password_message', 10, 2 );	
+}
+
+function sb_we_set_email_filter_headers() {
+	$sb_we_settings = get_option('sb_we_settings');
+	
 	if ($from_email = $sb_we_settings->header_from_email) {
-		add_filter('wp_mail_from', 'sb_we_get_from_email', 1, 100);
+		add_filter('wp_mail_from', 'sb_we_get_from_email', 1, 1);
 		
 		if ($from_name = $sb_we_settings->header_from_name) {
-			add_filter('wp_mail_from_name', 'sb_we_get_from_name', 1, 100);
+			add_filter('wp_mail_from_name', 'sb_we_get_from_name', 1, 1);
 		}
 	}
 	if ($send_as = $sb_we_settings->header_send_as) {
 		if ($send_as == 'html') {
-			add_filter('wp_mail_content_type', create_function('$i', 'return "text/html";'), 1, 100);
-			add_filter('wp_mail_charset', 'sb_we_get_charset', 1, 100);
+			add_filter('wp_mail_content_type', create_function('$i', 'return "text/html";'), 1, 1);
+			add_filter('wp_mail_charset', 'sb_we_get_charset', 1, 1);
 		}
 	}	
 }
@@ -465,7 +475,19 @@ function sb_we_settings() {
 	$settings = get_option('sb_we_settings');
 	
 	$page_options = array(
-	'settings[header_from_email]'=>array(
+	'general_settings_label'=>array(
+		'title'=>'General Settings'
+		, 'type'=>'label'
+		, 'style'=>'width: 500px;'
+		, 'description'=>'These settings effect all of this plugin and, in some cases, all of your site.'
+	)		
+	, 'settings[set_global_headers]'=>array(
+		'title'=>'Set Global Email Headers'
+		, 'type'=>'yes_no'
+		, 'style'=>'width: 500px;'
+		, 'description'=>'When set to yes this will cause all email from the site to come from the configured email and name. It also sets the content type as per the dropdown below (HTML/Plaintext). Added as a setting because some people might want to turn it off.'
+	)			
+	, 'settings[header_from_email]'=>array(
 		'title'=>'From Email Address'
 		, 'type'=>'text'
 		, 'style'=>'width: 500px;'
@@ -476,19 +498,53 @@ function sb_we_settings() {
 		, 'type'=>'text'
 		, 'style'=>'width: 500px;'
 		, 'description'=>'Global option change the from name for all site emails'
-	)		
+	)
+	, 'settings[header_send_as]'=>array(
+		'title'=>'Send Email As'
+		, 'type'=>'select'
+		, 'style'=>'width: 100px;'
+		, 'options'=>array(
+			'text'=>'TEXT'
+			, 'html'=>'HTML'
+		)
+		, 'description'=>'Send email as Text or HTML (Remember to remove html from text emails).'
+	)
+	,'welcome_email_settings_label'=>array(
+		'title'=>'Welcome Email Settings'
+		, 'type'=>'label'
+		, 'style'=>'width: 500px;'
+		, 'description'=>'These settings are for the email sent to the new user on their signup.'
+	)			
 	,'settings[user_subject]'=>array(
 		'title'=>'User Email Subject'
 		, 'type'=>'text'
 		, 'style'=>'width: 500px;'
-		, 'description'=>'Subject line for the email sent to the user.'
+		, 'description'=>'Subject line for the welcome email sent to the user.'
 	)
 	, 'settings[user_body]'=>array(
 		'title'=>'User Email Body'
 		, 'type'=>'textarea'
 		, 'style'=>'width: 650px; height: 500px;'
-		, 'description'=>'Body content for the email sent to the user.'
+		, 'description'=>'Body content for the welcome email sent to the user.'
 	)
+	, 'settings[header_additional]'=>array(
+		'title'=>'Additional Email Headers'
+		, 'type'=>'textarea'
+		, 'style'=>'width: 550px; height: 200px;'
+		, 'description'=>'Optional field for advanced users to add more headers. Dont\'t forget to separate headers with \r\n.'
+	)
+	, 'settings[header_reply_to]'=>array(
+		'title'=>'Reply To Email Address'
+		, 'type'=>'text'
+		, 'style'=>'width: 500px;'
+		, 'description'=>'Optional Header sent to change the reply to address for new user notification.'
+	)
+	,'welcome_email_admin_settings_label'=>array(
+		'title'=>'Welcome Email Admin Notification Settings'
+		, 'type'=>'label'
+		, 'style'=>'width: 500px;'
+		, 'description'=>'These settings are for the email sent to the admin on a new user signup.'
+	)				
 	, 'settings[admin_subject]'=>array(
 		'title'=>'Admin Email Subject'
 		, 'type'=>'text'
@@ -501,12 +557,24 @@ function sb_we_settings() {
 		, 'style'=>'width: 650px; height: 300px;'
 		, 'description'=>'Body content for the email sent to the admin user(s).'
 	)
+	, 'settings[admin_notify_user_id]'=>array(
+		'title'=>'Send Admin Email To...'
+		, 'type'=>'text'
+		, 'style'=>'width: 500px;'
+		, 'description'=>'This allows you to type in the User IDs of the people who you want the admin notification to be sent to. 1 is admin normally but just add more separating by commas (eg: 1,2,3,4).'
+	)		
+	,'password_reminder_service_settings_label'=>array(
+		'title'=>'Password Reminder Service Settings'
+		, 'type'=>'label'
+		, 'style'=>'width: 500px;'
+		, 'description'=>'These settings are for the buttons added to the users admin screen (users.php) allowing the password to be resent by the administrator at any time.'
+	)				
 	,'settings[disable_reminder_service]'=>array(
 		'title'=>'Disable Reminder Service'
 		, 'type'=>'yes_no'
 		, 'style'=>'width: 500px;'
 		, 'description'=>'Allows the admin to send users their passwords again if they forget them. Turn this off here if you want to'
-	)	
+	)
 	,'settings[reminder_subject]'=>array(
 		'title'=>'Reminder Email Subject'
 		, 'type'=>'text'
@@ -519,6 +587,12 @@ function sb_we_settings() {
 		, 'style'=>'width: 650px; height: 500px;'
 		, 'description'=>'Body content for the reminder email that admin can send to a user.'
 	)
+	,'forgot_password_settings_label'=>array(
+		'title'=>'User Forgot Password Email Settings'
+		, 'type'=>'label'
+		, 'style'=>'width: 500px;'
+		, 'description'=>'These settings are for the email sent to the user when they use the inbuild Wordpress forgot password functionality.'
+	)				
 	,'settings[password_reminder_subject]'=>array(
 		'title'=>'Forgot Password Email Subject'
 		, 'type'=>'text'
@@ -529,35 +603,7 @@ function sb_we_settings() {
 		'title'=>'Forgot Password Message'
 		, 'type'=>'textarea'
 		, 'style'=>'width: 650px; height: 500px;'
-		, 'description'=>'Content for the forgot password email that the user can send to themselves via the login screen. Use [blog_name], [site_url], [reset_url] and [user_login] where appropriate.'
-	)	
-	, 'settings[header_reply_to]'=>array(
-		'title'=>'Reply To Email Address'
-		, 'type'=>'text'
-		, 'style'=>'width: 500px;'
-		, 'description'=>'Optional Header sent to change the reply to address for new user notification.'
-	)
-	, 'settings[header_send_as]'=>array(
-		'title'=>'Send Email As'
-		, 'type'=>'select'
-		, 'style'=>'width: 100px;'
-		, 'options'=>array(
-			'text'=>'TEXT'
-			, 'html'=>'HTML'
-		)
-		, 'description'=>'Send email as Text or HTML (Remember to remove html from text emails).'
-	)
-	, 'settings[header_additional]'=>array(
-		'title'=>'Additional Email Headers'
-		, 'type'=>'textarea'
-		, 'style'=>'width: 550px; height: 200px;'
-		, 'description'=>'Optional field for advanced users to add more headers. Dont\'t forget to separate headers with \r\n.'
-	)
-	, 'settings[admin_notify_user_id]'=>array(
-		'title'=>'Send Admin Email To...'
-		, 'type'=>'text'
-		, 'style'=>'width: 500px;'
-		, 'description'=>'This allows you to type in the User IDs of the people who you want the admin notification to be sent to. 1 is admin normally but just add more separating by commas (eg: 1,2,3,4).'
+		, 'description'=>'Content for the forgot password email that the user can send to themselves via the login screen. Use [blog_name], [site_url], [reset_url] and [user_login] where appropriate. Note to use HTML in this box only if you have set the send mode to HTML. If not text will be used and any HTML ignored.'
 	)	
 	, 'submit'=>array(
 		'title'=>''
@@ -587,15 +633,21 @@ function sb_we_settings() {
 			$value = stripslashes(sb_we_post($tmp_name, $settings->$tmp_name));
 		}
 		$title = (isset($options['title']) ? $options['title']:false);
+		if ($options['type'] == 'label') {
+			$title = '<strong>' . $title . '</strong>';
+		}
 		
 		$html .= '	<tr class="' . ($i%2 ? 'alternate':'') . '">
 					<th style="vertical-align: top;">
 						' . $title . '
-						' . ($options['description'] ? '<div style="font-size: 10px; color: gray;">' . $options['description'] . '</div>':'') . '
+						' . ($options['description'] && $options['type'] != 'label' ? '<div style="font-size: 10px; color: gray;">' . $options['description'] . '</div>':'') . '
 					</th>
 					<td style="' . ($options['type'] == 'submit' ? 'text-align: right;':'') . '">';
 					
 		switch ($options['type']) {
+			case 'label':
+				$html .= $options['description'];
+				break;
 			case 'text':
 				$html .= sb_we_get_text($name, $value, $options['class'], $options['style']);
 				break;
