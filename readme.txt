@@ -51,6 +51,8 @@ V2.8 - 02/02/12 - Minor update fixes sender bug introduced by V2.7
 
 V2.9 - 05/02/12 - Minor update fixes bug which was overriding the from name and address for all wordpress and plugin emails. Now lowered the priority of the filter and have made the global usage of the filter optional via the admin screen. Added labels to the admin screen as the list was getting rather long!
 
+V3.0 - 16/02/12 - Minor update fixes a few coding inconsistencies. With thanks to John Cotton for notifying and fixing these issues on my behalf.
+
 == Installation ==
 
 1. Upload the contents of the ZIP file to the `/wp-content/plugins/` directory
