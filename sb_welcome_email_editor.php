@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the content and layout for many of the inbuilt Wordpress emails. Simple!
-Version: 3.0
+Version: 3.1
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
@@ -24,6 +24,7 @@ V2.7 - 01/02/12 - Minor update adds site wide change of from address and name fr
 V2.8 - 02/02/12 - Minor update fixes sender bug introduced by V2.7
 V2.9 - 05/02/12 - Minor update fixes bug which was overriding the from name and address for all wordpress and plugin emails. Now lowered the priority of the filter and have made the global usage of the filter optional via the admin screen. Added labels to the admin screen as the list was getting rather long!
 V3.0 - 16/02/12 - Minor update fixes a few coding inconsistencies. With thanks to John Cotton for notifying and fixing these issues on my behalf.
+V3.1 - 17/02/12 - Minor update fixes a minor notice showing up on sites with error reporting set to ALL (or anything to include PHP notices)
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -210,7 +211,7 @@ function sb_we_init() {
 		add_option('sb_we_settings', $sb_we_settings);
 	}
 
-	if ($sb_we_settings->set_global_headers) {
+	if (@$sb_we_settings->set_global_headers) {
 		sb_we_set_email_filter_headers();
 	}
 
