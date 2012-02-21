@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the content and layout for many of the inbuilt Wordpress emails. Simple!
-Version: 3.1
+Version: 3.2
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
@@ -25,6 +25,7 @@ V2.8 - 02/02/12 - Minor update fixes sender bug introduced by V2.7
 V2.9 - 05/02/12 - Minor update fixes bug which was overriding the from name and address for all wordpress and plugin emails. Now lowered the priority of the filter and have made the global usage of the filter optional via the admin screen. Added labels to the admin screen as the list was getting rather long!
 V3.0 - 16/02/12 - Minor update fixes a few coding inconsistencies. With thanks to John Cotton for notifying and fixing these issues on my behalf.
 V3.1 - 17/02/12 - Minor update fixes a minor notice showing up on sites with error reporting set to ALL (or anything to include PHP notices)
+V3.2 - 21/02/12 - Copy/paste error which broke the reminder email system. My apologies!
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -88,7 +89,7 @@ function sb_we_lost_password_title($content) {
 
 	if ($settings->password_reminder_subject) {
 		if ( is_multisite() ) $blogname = $GLOBALS['current_site']->site_name;
-		else $blogname = esc_html_decode(get_option('blogname'), ENT_QUOTES);
+		else $blogname = esc_html(get_option('blogname'), ENT_QUOTES);
 
 		$content = $settings->password_reminder_subject;
 		$content = str_replace('[blog_name]', $blogname, $content);
@@ -107,7 +108,7 @@ function sb_we_lost_password_message($message, $key) {
 			$site_url = site_url();
 
 			if ( is_multisite() ) $blogname = $GLOBALS['current_site']->site_name;
-			else $blogname = esc_html_decode(get_option('blogname'), ENT_QUOTES);
+			else $blogname = esc_html(get_option('blogname'), ENT_QUOTES);
 
 			$reset_url = trailingslashit(site_url()) . "wp-login.php?action=rp&key=$key&login=" . rawurlencode($user_login);
 			$message = $settings->password_reminder_body; //'Someone requested that the password be reset for the following account: [site_url]' . "\n\n" . 'Username: [user_login]' . "\n\n" . 'If this was a mistake, just ignore this email and nothing will happen.' . "\n\n" . 'To reset your password, visit the following address: [reset_url]';

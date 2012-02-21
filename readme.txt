@@ -55,6 +55,8 @@ V3.0 - 16/02/12 - Minor update fixes a few coding inconsistencies. With thanks t
 
 V3.1 - 17/02/12 - Minor update fixes a minor notice showing up on sites with error reporting set to ALL (or anything to include PHP notices)
 
+V3.2 - 21/02/12 - Copy/paste error which broke the reminder email system. My apologies!
+
 == Installation ==
 
 1. Upload the contents of the ZIP file to the `/wp-content/plugins/` directory
