@@ -57,6 +57,8 @@ V3.1 - 17/02/12 - Minor update fixes a minor notice showing up on sites with err
 
 V3.2 - 21/02/12 - Copy/paste error which broke the reminder email system. My apologies!
 
+V3.3 - 05/05/12 - Buddypress custom fields shortcode now checks for existence of itself before querying nonexistent tables.
+
 == Installation ==
 
 1. Upload the contents of the ZIP file to the `/wp-content/plugins/` directory

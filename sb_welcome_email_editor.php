@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the content and layout for many of the inbuilt Wordpress emails. Simple!
-Version: 3.2
+Version: 3.3
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
@@ -26,6 +26,7 @@ V2.9 - 05/02/12 - Minor update fixes bug which was overriding the from name and 
 V3.0 - 16/02/12 - Minor update fixes a few coding inconsistencies. With thanks to John Cotton for notifying and fixing these issues on my behalf.
 V3.1 - 17/02/12 - Minor update fixes a minor notice showing up on sites with error reporting set to ALL (or anything to include PHP notices)
 V3.2 - 21/02/12 - Copy/paste error which broke the reminder email system. My apologies!
+V3.3 - 05/05/12 - Buddypress custom fields shortcode now checks for existence of itself before querying nonexistent tables.
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -366,7 +367,10 @@ if (!function_exists('wp_new_user_notification')) {
 				$admin_message = str_replace('[plaintext_password]', $plaintext_pass, $admin_message);
 				$admin_message = str_replace('[user_password]', $plaintext_pass, $admin_message);
 				$admin_message = str_replace('[custom_fields]', '<pre>' . print_r($custom_fields, true) . '</pre>', $admin_message);
-				$admin_message = str_replace('[bp_custom_fields]', '<pre>' . print_r(sb_we_get_bp_custom_fields($user_id), true) . '</pre>', $admin_message);
+				
+				if (strpos($admin_message, '[bp_custom_fields]')) {
+					$admin_message = str_replace('[bp_custom_fields]', '<pre>' . print_r(sb_we_get_bp_custom_fields($user_id), true) . '</pre>', $admin_message);
+				}
 
 				$admin_subject = str_replace('[blog_name]', $blog_name, $admin_subject);
 				$admin_subject = str_replace('[site_url]', $sb_we_home, $admin_subject);
