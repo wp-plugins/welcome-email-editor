@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the content and layout for many of the inbuilt Wordpress emails. Simple!
-Version: 3.3
+Version: 3.4
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
@@ -27,6 +27,7 @@ V3.0 - 16/02/12 - Minor update fixes a few coding inconsistencies. With thanks t
 V3.1 - 17/02/12 - Minor update fixes a minor notice showing up on sites with error reporting set to ALL (or anything to include PHP notices)
 V3.2 - 21/02/12 - Copy/paste error which broke the reminder email system. My apologies!
 V3.3 - 05/05/12 - Buddypress custom fields shortcode now checks for existence of itself before querying nonexistent tables.
+V3.4 - 22/05/12 - Minor update.. added [date] and [time] shortcodes to the template
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -339,6 +340,9 @@ if (!function_exists('wp_new_user_notification')) {
 			if ($settings->admin_notify_user_id) {
 				//Allows single or multiple admins to be notified. Admin ID 1 OR 1,3,2,5,6,etc...
 				$admins = explode(',', $settings->admin_notify_user_id);
+				
+				$date = date(get_option('date_format'));
+				$time = date(get_option('time_format'));
 
 				if (!is_array($admins)) {
 					$admins = array($admins);
@@ -367,6 +371,8 @@ if (!function_exists('wp_new_user_notification')) {
 				$admin_message = str_replace('[plaintext_password]', $plaintext_pass, $admin_message);
 				$admin_message = str_replace('[user_password]', $plaintext_pass, $admin_message);
 				$admin_message = str_replace('[custom_fields]', '<pre>' . print_r($custom_fields, true) . '</pre>', $admin_message);
+				$admin_message = str_replace('[date]', $date, $admin_message);
+				$admin_message = str_replace('[time]', $time, $admin_message);
 				
 				if (strpos($admin_message, '[bp_custom_fields]')) {
 					$admin_message = str_replace('[bp_custom_fields]', '<pre>' . print_r(sb_we_get_bp_custom_fields($user_id), true) . '</pre>', $admin_message);
@@ -379,6 +385,8 @@ if (!function_exists('wp_new_user_notification')) {
 				$admin_subject = str_replace('[user_email]', $user_email, $admin_subject);
 				$admin_subject = str_replace('[user_login]', $user_login, $admin_subject);
 				$admin_subject = str_replace('[user_id]', $user_id, $admin_subject);
+				$admin_subject = str_replace('[date]', $date, $admin_subject);
+				$admin_subject = str_replace('[time]', $time, $admin_subject);
 
 				foreach ($admins as $admin_id) {
 					if ($admin = new WP_User($admin_id)) {
@@ -399,6 +407,8 @@ if (!function_exists('wp_new_user_notification')) {
 				$user_message = str_replace('[plaintext_password]', $plaintext_pass, $user_message);
 				$user_message = str_replace('[user_password]', $plaintext_pass, $user_message);
 				$user_message = str_replace('[blog_name]', $blog_name, $user_message);
+				$user_message = str_replace('[date]', $date, $user_message);
+				$user_message = str_replace('[time]', $time, $user_message);
 
 				$user_subject = str_replace('[blog_name]', $blog_name, $user_subject);
 				$user_subject = str_replace('[site_url]', $sb_we_home, $user_subject);
@@ -407,6 +417,8 @@ if (!function_exists('wp_new_user_notification')) {
 				$user_subject = str_replace('[first_name]', $first_name, $user_subject);
 				$user_subject = str_replace('[user_login]', $user_login, $user_subject);
 				$user_subject = str_replace('[user_id]', $user_id, $user_subject);
+				$user_subject = str_replace('[date]', $date, $user_subject);
+				$user_subject = str_replace('[time]', $time, $user_subject);
 
 				wp_mail($user_email, $user_subject, $user_message, $headers);
 			}
@@ -627,7 +639,7 @@ function sb_we_settings() {
 	)
 	);
 
-	$html .= '<div style="margin-bottom: 10px;">' . __('This page allows you to update the Wordpress welcome email and add headers to make it less likely to fall into spam. You can edit the templates for both the admin and user emails and assign admin members to receive the notifications. Use the following hooks in any of the boxes below: [site_url], [login_url], [user_email], [user_login], [plaintext_password], [blog_name], [admin_email], [user_id], [custom_fields], [first_name], [last_name], [bp_custom_fields] (buddypress custom fields .. admin only)', 'sb_we') . '</div>';
+	$html .= '<div style="margin-bottom: 10px;">' . __('This page allows you to update the Wordpress welcome email and add headers to make it less likely to fall into spam. You can edit the templates for both the admin and user emails and assign admin members to receive the notifications. Use the following hooks in any of the boxes below: [site_url], [login_url], [user_email], [user_login], [plaintext_password], [blog_name], [admin_email], [user_id], [custom_fields], [first_name], [last_name], [date], [time], [bp_custom_fields] (buddypress custom fields .. admin only)', 'sb_we') . '</div>';
 	$html .= sb_we_start_box('Settings');
 
 	$html .= '<form method="POST">';
