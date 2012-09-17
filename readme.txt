@@ -2,7 +2,7 @@
 Contributors: seanbarton
 Tags: welcome email, wordpress welcome email, welcome email editor, mail, email, new user email, password reminder, lost password
 Requires at least: 3.0
-Tested up to: 3.3
+Tested up to: 3.4.2
 
 A Plugin to provide an interface for the Wordpress Welcome/Forgot Password Emails. Allows adding of headers to prevent emails going into spam and changes to the text. Also offers a password reminder service accessable via the quick options on the admin users page.
 
@@ -60,6 +60,8 @@ V3.2 - 21/02/12 - Copy/paste error which broke the reminder email system. My apo
 V3.3 - 05/05/12 - Buddypress custom fields shortcode now checks for existence of itself before querying nonexistent tables.
 
 V3.4 - 22/05/12 - Minor update.. added [date] and [time] shortcodes to the template
+
+V3.5 - 29/05/12 - Major update.. added official support for the Wordpress multisite welcome email and password reminder system. Each blog can set their own welcome email message discreetly.
 
 
 == Installation ==
