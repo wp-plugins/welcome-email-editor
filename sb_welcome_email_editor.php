@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the content and layout for many of the inbuilt Wordpress emails. Simple!
-Version: 3.4
+Version: 3.5
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
@@ -28,6 +28,7 @@ V3.1 - 17/02/12 - Minor update fixes a minor notice showing up on sites with err
 V3.2 - 21/02/12 - Copy/paste error which broke the reminder email system. My apologies!
 V3.3 - 05/05/12 - Buddypress custom fields shortcode now checks for existence of itself before querying nonexistent tables.
 V3.4 - 22/05/12 - Minor update.. added [date] and [time] shortcodes to the template
+V3.5 - 16/01/13 - Minor update.. Found conflict with S2Member where the FROM address information wasnt being respected. Fixed the conflict
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -258,6 +259,20 @@ function sb_we_get_charset() {
 
 	return $charset;
 }
+
+add_action('ws_plugin__s2member_after_email_config_release', 'sb_we_set_global_from_details');
+
+function sb_we_set_global_from_details() {
+	$settings = get_option('sb_we_settings');
+	add_filter('wp_mail_from', 'sb_we_get_from_email', 1, 100);
+	add_filter('wp_mail_from_name', 'sb_we_get_from_name', 1, 100);
+}
+
+function sb_we_process_phpmailer_from_info(&$phpmailer) {
+	$phpmailer->From = sb_we_get_from_email();
+	$phpmailer->FromName = sb_we_get_from_name();
+}
+add_action('phpmailer_init', 'sb_we_process_phpmailer_from_info',1);
 
 if (!function_exists('wp_new_user_notification')) {
 	function wp_new_user_notification($user_id, $plaintext_pass = '', $reminder = false) {

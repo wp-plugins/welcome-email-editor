@@ -61,8 +61,7 @@ V3.3 - 05/05/12 - Buddypress custom fields shortcode now checks for existence of
 
 V3.4 - 22/05/12 - Minor update.. added [date] and [time] shortcodes to the template
 
-V3.5 - 29/05/12 - Major update.. added official support for the Wordpress multisite welcome email and password reminder system. Each blog can set their own welcome email message discreetly.
-
+V3.5 - 16/01/13 - Minor update.. Found conflict with S2Member where the FROM address information wasnt being respected. Fixed the conflict
 
 == Installation ==
 
