@@ -2,8 +2,8 @@
 /*
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
-Description: Allows you to change the content and layout for many of the inbuilt Wordpress emails. Simple!
-Version: 3.5
+Description: Allows you to change the content, layout and even add an attachment for many of the inbuilt Wordpress emails. Simple!
+Version: 3.7
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
@@ -29,6 +29,8 @@ V3.2 - 21/02/12 - Copy/paste error which broke the reminder email system. My apo
 V3.3 - 05/05/12 - Buddypress custom fields shortcode now checks for existence of itself before querying nonexistent tables.
 V3.4 - 22/05/12 - Minor update.. added [date] and [time] shortcodes to the template
 V3.5 - 16/01/13 - Minor update.. Found conflict with S2Member where the FROM address information wasnt being respected. Fixed the conflict
+V3.6 - 21/01/13 - Minor update. Moved menu to the settings panel and renmaed to SB Welcome Email so that it fits on one line.
+V3.7 - 27/02/13 - Minor update. Added ability to have an attachment with the welcome email. Moved the admin page into the settings menu.
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -36,17 +38,13 @@ $sb_we_dir = trailingslashit(str_replace('\\', '/', dirname(__FILE__)));
 $sb_we_home = trailingslashit(str_replace('\\', '/', get_bloginfo('wpurl')));
 $sb_we_active = true;
 
-define('SB_WE_PRODUCT_NAME', 'SB Welcome Email Editor');
+define('SB_WE_PRODUCT_NAME', 'SB Welcome Email');
 define('SB_WE_PLUGIN_DIR_PATH', $sb_we_dir);
 define('SB_WE_PLUGIN_DIR_URL', trailingslashit(str_replace(str_replace('\\', '/', ABSPATH), $sb_we_home, $sb_we_dir)));
 define('SB_WE_PLUGIN_DIRNAME', str_replace('/plugins/','',strstr(SB_WE_PLUGIN_DIR_URL, '/plugins/')));
 
 $sb_we_admin_start = '<div id="poststuff" class="wrap"><h2>' . SB_WE_PRODUCT_NAME . '</h2>';
 $sb_we_admin_end = '</div>';
-
-$sb_we_pages = array(
-	__('Settings','sb_we')=>'sb_we_settings'
-);
 
 //sb_we_printr(get_option('active_plugins'));
 
@@ -209,34 +207,38 @@ function sb_we_init() {
 		$sb_we_settings->header_send_as = 'html';
 		$sb_we_settings->header_additional = '';
 		$sb_we_settings->set_global_headers = 1;
+		$sb_we_settings->we_attachment_url = '';
 		$sb_we_settings->password_reminder_subject = '[[blog_name]] Forgot Password';
 		$sb_we_settings->password_reminder_body = 'Someone requested that the password be reset for the following account: [site_url]<br /><br />Username: [user_login]<br /><br />If this was a mistake, just ignore this email and nothing will happen.<br /><br />To reset your password, visit the following address: [reset_url]';
 
 		add_option('sb_we_settings', $sb_we_settings);
 	}
 
-	if (@$sb_we_settings->set_global_headers) {
-		sb_we_set_email_filter_headers();
-	}
-
 	add_filter('retrieve_password_title', 'sb_we_lost_password_title', 10, 1 );
 	add_filter('retrieve_password_message', 'sb_we_lost_password_message', 10, 2 );
 }
 
-function sb_we_set_email_filter_headers() {
-	$sb_we_settings = get_option('sb_we_settings');
-
-	if ($from_email = $sb_we_settings->header_from_email) {
-		add_filter('wp_mail_from', 'sb_we_get_from_email', 1, 1);
-
-		if ($from_name = $sb_we_settings->header_from_name) {
-			add_filter('wp_mail_from_name', 'sb_we_get_from_name', 1, 1);
+function sb_we_set_email_filter_headers($reset=false) {
+	if ($reset) {
+		remove_filter('wp_mail_from', 'sb_we_get_from_email', 1, 1);
+		remove_filter('wp_mail_from_name', 'sb_we_get_from_name', 1, 1);
+		remove_filter('wp_mail_content_type', create_function('$i', 'return "text/html";'), 1, 1);
+		remove_filter('wp_mail_charset', 'sb_we_get_charset', 1, 1);
+	} else {
+		$sb_we_settings = get_option('sb_we_settings');
+	
+		if ($from_email = $sb_we_settings->header_from_email) {
+			add_filter('wp_mail_from', 'sb_we_get_from_email', 1, 1);
+	
+			if ($from_name = $sb_we_settings->header_from_name) {
+				add_filter('wp_mail_from_name', 'sb_we_get_from_name', 1, 1);
+			}
 		}
-	}
-	if ($send_as = $sb_we_settings->header_send_as) {
-		if ($send_as == 'html') {
-			add_filter('wp_mail_content_type', create_function('$i', 'return "text/html";'), 1, 1);
-			add_filter('wp_mail_charset', 'sb_we_get_charset', 1, 1);
+		if ($send_as = $sb_we_settings->header_send_as) {
+			if ($send_as == 'html') {
+				add_filter('wp_mail_content_type', create_function('$i', 'return "text/html";'), 1, 1);
+				add_filter('wp_mail_charset', 'sb_we_get_charset', 1, 1);
+			}
 		}
 	}
 }
@@ -277,6 +279,10 @@ add_action('phpmailer_init', 'sb_we_process_phpmailer_from_info',1);
 if (!function_exists('wp_new_user_notification')) {
 	function wp_new_user_notification($user_id, $plaintext_pass = '', $reminder = false) {
 		global $sb_we_home, $current_site;;
+		
+		if (@$sb_we_settings->set_global_headers) {
+			sb_we_set_email_filter_headers();
+		}
 
 		if ($user = new WP_User($user_id)) {
 			$settings = get_option('sb_we_settings');
@@ -434,9 +440,18 @@ if (!function_exists('wp_new_user_notification')) {
 				$user_subject = str_replace('[user_id]', $user_id, $user_subject);
 				$user_subject = str_replace('[date]', $date, $user_subject);
 				$user_subject = str_replace('[time]', $time, $user_subject);
-
-				wp_mail($user_email, $user_subject, $user_message, $headers);
+				
+				$attachment = false;
+				if (trim($settings->we_attachment_url)) {
+					$attachment = str_replace(trailingslashit(site_url()), trailingslashit($_SERVER['DOCUMENT_ROOT']), $settings->we_attachment_url);
+				}
+				
+				wp_mail($user_email, $user_subject, $user_message, $headers, $attachment);
 			}
+		}
+		
+		if (@$sb_we_settings->set_global_headers) {
+			sb_we_set_email_filter_headers(true);
 		}
 
 		return true;
@@ -518,12 +533,6 @@ function sb_we_settings() {
 		, 'style'=>'width: 500px;'
 		, 'description'=>'These settings effect all of this plugin and, in some cases, all of your site.'
 	)
-	, 'settings[set_global_headers]'=>array(
-		'title'=>'Set Global Email Headers'
-		, 'type'=>'yes_no'
-		, 'style'=>'width: 500px;'
-		, 'description'=>'When set to yes this will cause all email from the site to come from the configured email and name. It also sets the content type as per the dropdown below (HTML/Plaintext). Added as a setting because some people might want to turn it off.'
-	)
 	, 'settings[header_from_email]'=>array(
 		'title'=>'From Email Address'
 		, 'type'=>'text'
@@ -546,6 +555,12 @@ function sb_we_settings() {
 		)
 		, 'description'=>'Send email as Text or HTML (Remember to remove html from text emails).'
 	)
+	, 'settings[set_global_headers]'=>array(
+		'title'=>'Set Global Email Headers'
+		, 'type'=>'yes_no'
+		, 'style'=>'width: 500px;'
+		, 'description'=>'This is one of those "hit it with a hammer" type functions to set to yes when you might be having issues with the from name and address setting. Or setting it to no as and when another plugin is being effected by Welcome Email Editor\'s existence.'
+	)
 	,'welcome_email_settings_label'=>array(
 		'title'=>'Welcome Email Settings'
 		, 'type'=>'label'
@@ -563,6 +578,12 @@ function sb_we_settings() {
 		, 'type'=>'textarea'
 		, 'style'=>'width: 650px; height: 500px;'
 		, 'description'=>'Body content for the welcome email sent to the user.'
+	)
+	, 'settings[we_attachment_url]'=>array(
+		'title'=>'Attachment URL'
+		, 'type'=>'text'
+		, 'style'=>'width: 500px;'
+		, 'description'=>'If you want the welcome email to have an attachment then put the URL here. The file MUST be on THIS server in a web servable directory. If you don\'t understand this then use the WordPress media uploader and paste the FULL URL into this box and it will do the rest.'
 	)
 	, 'settings[header_additional]'=>array(
 		'title'=>'Additional Email Headers'
@@ -814,17 +835,12 @@ function sb_we_end_box($return=true) {
 }
 
 function sb_we_admin_page() {
-	global $sb_we_pages;
-
 	$admin_page = 'sb_we_settings';
 	$func = 'sb_we_admin_loader';
 	$access_level = 'manage_options';
 
-	add_menu_page(SB_WE_PRODUCT_NAME, SB_WE_PRODUCT_NAME, $access_level, $admin_page, $func);
-
-	foreach ($sb_we_pages as $title=>$page) {
-		add_submenu_page($admin_page, $title, $title, $access_level, $page, $func);
-	}
+	//add_menu_page(SB_WE_PRODUCT_NAME, SB_WE_PRODUCT_NAME, $access_level, $admin_page, $func);
+	add_submenu_page('options-general.php', SB_WE_PRODUCT_NAME, SB_WE_PRODUCT_NAME, $access_level, $admin_page, $func);
 
 }
 

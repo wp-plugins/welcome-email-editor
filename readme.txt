@@ -1,10 +1,10 @@
 === Plugin Name ===
 Contributors: seanbarton
-Tags: welcome email, wordpress welcome email, welcome email editor, mail, email, new user email, password reminder, lost password
+Tags: welcome email, wordpress welcome email, welcome email editor, mail, email, new user email, password reminder, lost password, welcome email attachment, mail attachment, email attachment
 Requires at least: 3.0
-Tested up to: 3.4.2
+Tested up to: 3.5.2
 
-A Plugin to provide an interface for the Wordpress Welcome/Forgot Password Emails. Allows adding of headers to prevent emails going into spam and changes to the text. Also offers a password reminder service accessable via the quick options on the admin users page.
+Allows you to edit the Wordpress Welcome/Forgot Password Emails to customise the content and even add an attachment. Allows adding of headers to prevent emails going into spam and changes to the text. Also offers a password reminder service accessable via the quick options on the admin users page.
 
 == Description ==
 
@@ -62,6 +62,12 @@ V3.3 - 05/05/12 - Buddypress custom fields shortcode now checks for existence of
 V3.4 - 22/05/12 - Minor update.. added [date] and [time] shortcodes to the template
 
 V3.5 - 16/01/13 - Minor update.. Found conflict with S2Member where the FROM address information wasnt being respected. Fixed the conflict
+
+V3.6 - 21/01/13 - Minor update. Moved menu to the settings panel and renmaed to SB Welcome Email so that it fits on one line.
+
+V3.7 - 27/02/13 - Minor update. Added ability to have an attachment with the welcome email. Moved the admin page into the settings menu.
+
+
 
 == Installation ==
 
