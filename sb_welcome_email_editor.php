@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the content, layout and even add an attachment for many of the inbuilt Wordpress emails. Simple!
-Version: 3.7
+Version: 3.8
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
@@ -31,6 +31,7 @@ V3.4 - 22/05/12 - Minor update.. added [date] and [time] shortcodes to the templ
 V3.5 - 16/01/13 - Minor update.. Found conflict with S2Member where the FROM address information wasnt being respected. Fixed the conflict
 V3.6 - 21/01/13 - Minor update. Moved menu to the settings panel and renmaed to SB Welcome Email so that it fits on one line.
 V3.7 - 27/02/13 - Minor update. Added ability to have an attachment with the welcome email. Moved the admin page into the settings menu.
+V3.8 - 14/05/13 - Minor update. Removed reminder email functionality
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -54,14 +55,8 @@ function sb_we_loaded() {
 	add_action('admin_menu', 'sb_we_admin_page');
 
 	if( $settings = get_option('sb_we_settings') ) {	// prevent warning on $settings use when first enabled
-		if (!$settings->disable_reminder_service) {
-			add_action('profile_update', 'sb_we_profile_update');
-			add_filter('user_row_actions', 'sb_we_user_col_row', 10, 2);
-		}
 	}
 
-	//add_action('manage_users_custom_column', 'sb_we_user_col_row', 98, 3);
-	//add_filter('manage_users_columns', 'sb_we_user_col');
 	add_filter('wpmu_welcome_user_notification', 'sb_we_mu_new_user_notification', 10, 3 );
 
 	global $sb_we_active;
@@ -124,14 +119,14 @@ function sb_we_lost_password_message($message, $key) {
 	return $message;
 }
 
-function sb_we_send_new_user_notification($user_id, $reminder=false) {
+function sb_we_send_new_user_notification($user_id) {
 	$return = false;
 
 	if (!$plaintext_pass = get_usermeta($user_id, 'sb_we_plaintext_pass')) {
 		$plaintext_pass = '[Your Password Here]';
 	}
 
-	if (wp_new_user_notification($user_id, $plaintext_pass, $reminder)) {
+	if (wp_new_user_notification($user_id, $plaintext_pass)) {
 		$return = 'Welcome email sent.';
 	}
 
@@ -140,51 +135,6 @@ function sb_we_send_new_user_notification($user_id, $reminder=false) {
 
 function sb_we_mu_new_user_notification($user_id, $password, $meta='') {
 	return wp_new_user_notification($user_id, $password);
-}
-
-function sb_we_profile_update() {
-	$pass1 = sb_we_post('pass1');
-	$pass2 = sb_we_post('pass2');
-	$action = sb_we_post('action');
-	$user_id = sb_we_post('user_id');
-
-	if ($action == 'update' && $user_id) {
-		if ($pass1 && $pass1 == $pass2) {
-			update_usermeta($user_id, 'sb_we_plaintext_pass', $pass1);
-		}
-	}
-
-}
-
-function sb_we_user_col_row($actions, $user) {
-	$return = '';
-
-	$id = $user->ID;
-
-	$plain_pass = get_user_meta($id, 'sb_we_plaintext_pass', true);
-	$last_sent = get_user_meta($id, 'sb_we_last_sent', true);
-	$style = 'cursor: pointer; display: inline;';
-	$title = 'Click to send a reminder email to this user.';
-
-	if ($plain_pass && $plain_pass != '[Your Password Here]') {
-		$return = '<input style="' . $style . '" title="' . $title . ' We have their password to send (' . $plain_pass . ')." type="submit" name="sb_we_resend_' . $id . '" value="Remind PW" />';
-	} else {
-		$return = '';
-	}
-
-	/*if ($last_sent) {
-		$last_sent_string = date('jS F Y H:i:s', $last_sent);
-		if ($last_sent > time()-3600) {
-			$last_sent_string = '<span style="color: green;">' . $last_sent_string . '</span>';
-		}
-		$return .= '<br /><em>Last Re/Sent: ' . $last_sent_string . '</em>';
-	}*/
-
-	if ($return) {
-		$actions['welcome_email'] = $return;
-	}
-
-	return $actions;
 }
 
 function sb_we_init() {
@@ -197,10 +147,6 @@ function sb_we_init() {
 		$sb_we_settings->admin_subject = '[[blog_name]] New User Registration';
 		$sb_we_settings->admin_body = 'New user registration on your blog ' . $blog_name . '<br /><br />Username: [user_login]<br />Email: [user_email]';
 		$sb_we_settings->admin_notify_user_id = 1;
-		$sb_we_settings->remind_on_profile_update = 0;
-		$sb_we_settings->disable_reminder_service = 0;
-		$sb_we_settings->reminder_subject = '[[blog_name]] Your username and password reminder';
-		$sb_we_settings->reminder_body = 'Just a reminder for you...<br /><br />Username: [user_login]<br />Password: [user_password]<br />[login_url]';
 		$sb_we_settings->header_from_name = '';
 		$sb_we_settings->header_from_email = '[admin_email]';
 		$sb_we_settings->header_reply_to = '[admin_email]';
@@ -214,8 +160,6 @@ function sb_we_init() {
 		add_option('sb_we_settings', $sb_we_settings);
 	}
 
-	add_filter('retrieve_password_title', 'sb_we_lost_password_title', 10, 1 );
-	add_filter('retrieve_password_message', 'sb_we_lost_password_message', 10, 2 );
 }
 
 function sb_we_set_email_filter_headers($reset=false) {
@@ -251,6 +195,7 @@ function sb_we_get_from_email() {
 
 function sb_we_get_from_name() {
 	$sb_we_settings = get_option('sb_we_settings');
+	$admin_email = get_option('admin_email');
 	return str_replace('[admin_email]', $admin_email, $sb_we_settings->header_from_name);
 }
 
@@ -277,7 +222,7 @@ function sb_we_process_phpmailer_from_info(&$phpmailer) {
 add_action('phpmailer_init', 'sb_we_process_phpmailer_from_info',1);
 
 if (!function_exists('wp_new_user_notification')) {
-	function wp_new_user_notification($user_id, $plaintext_pass = '', $reminder = false) {
+	function wp_new_user_notification($user_id, $plaintext_pass = '') {
 		global $sb_we_home, $current_site;;
 		
 		if (@$sb_we_settings->set_global_headers) {
@@ -286,12 +231,6 @@ if (!function_exists('wp_new_user_notification')) {
 
 		if ($user = new WP_User($user_id)) {
 			$settings = get_option('sb_we_settings');
-
-			if (!$settings->disable_reminder_service) {
-				if (!in_array($plaintext_pass, array('[User password will appear here]', '[Your Password Here]'))) {
-					update_usermeta($user_id, 'sb_we_plaintext_pass', $plaintext_pass); //store user password in case of reminder
-				}
-			}
 
 			update_usermeta($user_id, 'sb_we_last_sent', time());
 
@@ -305,13 +244,8 @@ if (!function_exists('wp_new_user_notification')) {
 			$user_login = stripslashes($user->user_login);
 			$user_email = stripslashes($user->user_email);
 
-			if (!$reminder) {
-				$user_subject = $settings->user_subject;
-				$user_message = $settings->user_body;
-			} else {
-				$user_subject = $settings->reminder_subject;
-				$user_message = $settings->reminder_body;
-			}
+			$user_subject = $settings->user_subject;
+			$user_message = $settings->user_body;
 
 			$admin_subject = $settings->admin_subject;
 			$admin_message = $settings->admin_body;
@@ -621,35 +555,11 @@ function sb_we_settings() {
 		, 'style'=>'width: 500px;'
 		, 'description'=>'This allows you to type in the User IDs of the people who you want the admin notification to be sent to. 1 is admin normally but just add more separating by commas (eg: 1,2,3,4).'
 	)
-	,'password_reminder_service_settings_label'=>array(
-		'title'=>'Password Reminder Service Settings'
-		, 'type'=>'label'
-		, 'style'=>'width: 500px;'
-		, 'description'=>'These settings are for the buttons added to the users admin screen (users.php) allowing the password to be resent by the administrator at any time.'
-	)
-	,'settings[disable_reminder_service]'=>array(
-		'title'=>'Disable Reminder Service'
-		, 'type'=>'yes_no'
-		, 'style'=>'width: 500px;'
-		, 'description'=>'Allows the admin to send users their passwords again if they forget them. Turn this off here if you want to'
-	)
-	,'settings[reminder_subject]'=>array(
-		'title'=>'Reminder Email Subject'
-		, 'type'=>'text'
-		, 'style'=>'width: 500px;'
-		, 'description'=>'Subject line for the reminder email that admin can send to a user.'
-	)
-	, 'settings[reminder_body]'=>array(
-		'title'=>'Reminder Email Body'
-		, 'type'=>'textarea'
-		, 'style'=>'width: 650px; height: 500px;'
-		, 'description'=>'Body content for the reminder email that admin can send to a user.'
-	)
 	,'forgot_password_settings_label'=>array(
 		'title'=>'User Forgot Password Email Settings'
 		, 'type'=>'label'
 		, 'style'=>'width: 500px;'
-		, 'description'=>'These settings are for the email sent to the user when they use the inbuild Wordpress forgot password functionality.'
+		, 'description'=>'These settings are for the email sent to the user when they use the inbuilt Wordpress forgot password functionality.'
 	)
 	,'settings[password_reminder_subject]'=>array(
 		'title'=>'Forgot Password Email Subject'

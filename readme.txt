@@ -67,6 +67,8 @@ V3.6 - 21/01/13 - Minor update. Moved menu to the settings panel and renmaed to 
 
 V3.7 - 27/02/13 - Minor update. Added ability to have an attachment with the welcome email. Moved the admin page into the settings menu.
 
+V3.8 - 14/05/13 - Minor update. Removed reminder email functionality
+
 
 
 == Installation ==
