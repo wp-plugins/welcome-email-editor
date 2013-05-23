@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the content, layout and even add an attachment for many of the inbuilt Wordpress emails. Simple!
-Version: 3.8
+Version: 3.9
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
@@ -32,6 +32,7 @@ V3.5 - 16/01/13 - Minor update.. Found conflict with S2Member where the FROM add
 V3.6 - 21/01/13 - Minor update. Moved menu to the settings panel and renmaed to SB Welcome Email so that it fits on one line.
 V3.7 - 27/02/13 - Minor update. Added ability to have an attachment with the welcome email. Moved the admin page into the settings menu.
 V3.8 - 14/05/13 - Minor update. Removed reminder email functionality
+V3.9 - 23/05/13 - Minor update. Added code recommended by 'http://forum.ait-pro.com/forums/topic/bps-pro-5-8-conflict-with-other-email-plugin/', Also turned off the direct phpmailer interaction as it was causing issues with some setups
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -61,7 +62,7 @@ function sb_we_loaded() {
 
 	global $sb_we_active;
 
-	if (is_admin() && !isset($_REQUEST['_wp_http_referer'])) {
+	if (is_admin() && !empty($_REQUEST['_wp_http_referer'])) {
 		if (!$sb_we_active) {
 			$msg = '<div class="error"><p>' . SB_WE_PRODUCT_NAME . ' can not function because another plugin is conflicting. Please disable other plugins until this message disappears to fix the problem.</p></div>';
 			add_action('admin_notices', create_function( '', 'echo \'' . $msg . '\';' ));
@@ -219,7 +220,7 @@ function sb_we_process_phpmailer_from_info(&$phpmailer) {
 	$phpmailer->From = sb_we_get_from_email();
 	$phpmailer->FromName = sb_we_get_from_name();
 }
-add_action('phpmailer_init', 'sb_we_process_phpmailer_from_info',1);
+//add_action('phpmailer_init', 'sb_we_process_phpmailer_from_info',1); //disabled this as it was overkill and disrupting other email plugins
 
 if (!function_exists('wp_new_user_notification')) {
 	function wp_new_user_notification($user_id, $plaintext_pass = '') {

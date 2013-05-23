@@ -69,6 +69,8 @@ V3.7 - 27/02/13 - Minor update. Added ability to have an attachment with the wel
 
 V3.8 - 14/05/13 - Minor update. Removed reminder email functionality
 
+V3.9 - 23/05/13 - Minor update. Added code recommended by 'http://forum.ait-pro.com/forums/topic/bps-pro-5-8-conflict-with-other-email-plugin/'
+
 
 
 == Installation ==
