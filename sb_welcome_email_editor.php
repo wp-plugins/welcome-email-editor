@@ -233,7 +233,7 @@ if (!function_exists('wp_new_user_notification')) {
 		if ($user = new WP_User($user_id)) {
 			$settings = get_option('sb_we_settings');
 
-			update_usermeta($user_id, 'sb_we_last_sent', time());
+			update_user_meta($user_id, 'sb_we_last_sent', time());
 
 			$blog_name = get_option('blogname');
 			if (is_multisite()) {
