@@ -96,30 +96,37 @@ function sb_we_lost_password_title($content) {
 	return $content;
 }
 
-+add_filter ("retrieve_password_message", "sb_we_lost_password_message");
-function sb_we_lost_password_message($message, $key) {
-	global $wpdb;
+++add_filter ("retrieve_password_message", "sb_we_lost_password_message", null, 2);
++function sb_we_lost_password_message( $message, $key ) {
++	
++    $settings = get_option('sb_we_settings');
 
-	$settings = get_option('sb_we_settings');
+	if ( strpos($_POST['user_login'], '@') ) {
++		$user_data = get_user_by('email', trim($_POST['user_login']));
+	} else {
++        	$login = trim($_POST['user_login']);
++        	$user_data = get_user_by('login', $login);
++    	}
+
+	$user_login = $user_data->user_login;
++    	if ( is_multisite() ) {
++       	$blogname = $GLOBALS['current_site']->site_name;
++    	}
++    	else {
++        	$blogname = esc_html(get_option('blogname'), ENT_QUOTES);
++    	}
+
 
 	if (trim($settings->password_reminder_body)) {
-		if ($user_login = $wpdb->get_var($wpdb->prepare("SELECT user_login FROM $wpdb->users WHERE user_activation_key = %s", $key))) {
-			$site_url = site_url();
+	+        $reset_url = network_site_url("wp-login.php?action=rp&key=$key&login=" . rawurlencode($user_login), 'login');
+	+        $message = $settings->password_reminder_body; //'Someone requested that the password be reset for the following account: [site_url]' . "\n\n" . 'Username: [user_login]' . "\n\n" . 'If this was a mistake, just ignore this email and nothing will happen.' . "\n\n" . 'To reset your password, visit the following address: [reset_url]';
+	+        $message = str_replace('[user_login]', $user_login, $message);
+	+        $message = str_replace('[blog_name]', $blogname, $message);
+	+        $message = str_replace('[site_url]', $network_site_url, $message);
+	+        $message = str_replace('[reset_url]', $reset_url, $message);
++    	}
++    	return $message;
 
-			if ( is_multisite() ) $blogname = $GLOBALS['current_site']->site_name;
-			else $blogname = esc_html(get_option('blogname'), ENT_QUOTES);
-
-			$reset_url = trailingslashit(site_url()) . "wp-login.php?action=rp&key=$key&login=" . rawurlencode($user_login);
-			$message = $settings->password_reminder_body; //'Someone requested that the password be reset for the following account: [site_url]' . "\n\n" . 'Username: [user_login]' . "\n\n" . 'If this was a mistake, just ignore this email and nothing will happen.' . "\n\n" . 'To reset your password, visit the following address: [reset_url]';
-
-			$message = str_replace('[user_login]', $user_login, $message);
-			$message = str_replace('[blog_name]', $blogname, $message);
-			$message = str_replace('[site_url]', $site_url, $message);
-			$message = str_replace('[reset_url]', $reset_url, $message);
-		}
-	}
-
-	return $message;
 }
 
 function sb_we_send_new_user_notification($user_id) {
