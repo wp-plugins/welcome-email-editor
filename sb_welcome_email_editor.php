@@ -81,6 +81,7 @@ function sb_we_loaded() {
 	}
 }
 
++add_filter ("retrieve_password_title", "sb_we_lost_password_title");
 function sb_we_lost_password_title($content) {
 	$settings = get_option('sb_we_settings');
 
@@ -95,6 +96,7 @@ function sb_we_lost_password_title($content) {
 	return $content;
 }
 
++add_filter ("retrieve_password_message", "sb_we_lost_password_message");
 function sb_we_lost_password_message($message, $key) {
 	global $wpdb;
 
