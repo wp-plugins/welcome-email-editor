@@ -495,7 +495,7 @@ function sb_we_settings() {
 	, 'settings[set_global_headers]'=>array(
 		'title'=>'Set Global Email Headers'
 		, 'type'=>'yes_no'
-		, 'style'=>'width: 500px;'
++		, 'style'=>'width: auto;'
 		, 'description'=>'This is one of those "hit it with a hammer" type functions to set to yes when you might be having issues with the from name and address setting. Or setting it to no as and when another plugin is being effected by Welcome Email Editor\'s existence.'
 	)
 	,'welcome_email_settings_label'=>array(
@@ -711,7 +711,7 @@ function sb_we_get_yes_no($name, $value=false, $class=false, $style=false) {
 	$return = '';
 
 	$return .= 'Yes: ' . sb_we_get_input($name, 'radio', 1, $class, $style, ($value == 1 ? 'checked="checked"':'')) . '<br />';
-	$return .= 'No: ' . sb_we_get_input($name, 'radio', 0, $class, $style, ($value == 1 ? '':'checked="checked"'));
++	$return .= '&nbsp;No: ' . sb_we_get_input($name, 'radio', 0, $class, $style, ($value == 1 ? '':'checked="checked"'));
 
 	return $return;
 }
