@@ -1,8 +1,8 @@
 === Plugin Name ===
 Contributors: seanbarton
 Tags: welcome email, wordpress welcome email, welcome email editor, mail, email, new user email, password reminder, lost password, welcome email attachment, mail attachment, email attachment
-Requires at least: 3.0
-Tested up to: 3.5.2
+Requires at least: 4.0
+Tested up to: 4.4.*
 
 Allows you to edit the Wordpress Welcome/Forgot Password Emails to customise the content and even add an attachment. Allows adding of headers to prevent emails going into spam and changes to the text. Also offers a password reminder service accessable via the quick options on the admin users page.
 
@@ -71,6 +71,7 @@ V3.8 - 14/05/13 - Minor update. Removed reminder email functionality
 
 V3.9 - 23/05/13 - Minor update. Added code recommended by 'http://forum.ait-pro.com/forums/topic/bps-pro-5-8-conflict-with-other-email-plugin/'
 
+V4.0 - 20/07/15 - Added some code to force this plugin to the top of the load order to reduce conflict with other plugins. Alsot sorted out those dodgy radio buttons on the settings page!
 
 
 == Installation ==
@@ -87,3 +88,5 @@ Once complete, all new user emails will be sent in the new format.
 Don't look at screenshots of admin pages... Just give it a go :) If you must then see the following address for more information...
 
 Screenshots available at: http://www.sean-barton.co.uk/wordpress-welcome-email-editor/
+
+... these are quite old now so perhaps just install it and have a look for yourself ;)

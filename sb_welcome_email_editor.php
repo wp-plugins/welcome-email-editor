@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the content, layout and even add an attachment for many of the inbuilt Wordpress emails. Simple!
-Version: 3.9
+Version: 4.0
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 
@@ -33,6 +33,7 @@ V3.6 - 21/01/13 - Minor update. Moved menu to the settings panel and renmaed to 
 V3.7 - 27/02/13 - Minor update. Added ability to have an attachment with the welcome email. Moved the admin page into the settings menu.
 V3.8 - 14/05/13 - Minor update. Removed reminder email functionality
 V3.9 - 23/05/13 - Minor update. Added code recommended by 'http://forum.ait-pro.com/forums/topic/bps-pro-5-8-conflict-with-other-email-plugin/', Also turned off the direct phpmailer interaction as it was causing issues with some setups
+V4.0 - 20/07/15 - Added some code to force this plugin to the top of the load order to reduce conflict with other plugins. Alsot sorted out those dodgy radio buttons on the settings page!
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -138,7 +139,24 @@ function sb_we_mu_new_user_notification($user_id, $password, $meta='') {
 	return wp_new_user_notification($user_id, $password);
 }
 
+function sb_we_priority_load_plugin() {
+	$wp_path_to_this_file = preg_replace('/(.*)plugins\/(.*)$/', WP_PLUGIN_DIR."/$2", __FILE__);
+	$this_plugin = plugin_basename(trim($wp_path_to_this_file));
+	$active_plugins = get_option('active_plugins');
+	$this_plugin_key = array_search($this_plugin, $active_plugins);
+	
+	if ($this_plugin_key) { // if it's 0 it's the first plugin already, no need to continue
+		array_splice($active_plugins, $this_plugin_key, 1);
+		array_unshift($active_plugins, $this_plugin);
+		update_option('active_plugins', $active_plugins);
+	}
+	
+}
+
 function sb_we_init() {
+	
+	sb_we_priority_load_plugin();
+	
 	if (!$sb_we_settings = get_option('sb_we_settings')) {
 		$blog_name = get_option('blogname');
 
@@ -493,7 +511,7 @@ function sb_we_settings() {
 	, 'settings[set_global_headers]'=>array(
 		'title'=>'Set Global Email Headers'
 		, 'type'=>'yes_no'
-		, 'style'=>'width: 500px;'
+		, 'style'=>'margin-left: 10px;'
 		, 'description'=>'This is one of those "hit it with a hammer" type functions to set to yes when you might be having issues with the from name and address setting. Or setting it to no as and when another plugin is being effected by Welcome Email Editor\'s existence.'
 	)
 	,'welcome_email_settings_label'=>array(
@@ -590,7 +608,7 @@ function sb_we_settings() {
 	$html .= sb_we_start_box('Settings');
 
 	$html .= '<form method="POST">';
-	$html .= '<table class="widefat form-table">';
+	$html .= '<table class="widefat">';
 
 	$i = 0;
 	foreach ($page_options as $name=>$options) {
