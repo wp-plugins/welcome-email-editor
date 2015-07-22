@@ -3,37 +3,9 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the content, layout and even add an attachment for many of the inbuilt Wordpress emails. Simple!
-Version: 4.0
+Version: 4.2
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
-
-Changelog:
-<V1.6 - Didn't quite manage to add a changelog until now :)
-V1.6 - 25/3/11 - Added user_id and custom_fields as hooks for use
-V1.7 - 17/4/11 - Added password reminder service and secondary email template for it's use
-V1.8 - 24/8/11 - Added [admin_email] hook to be parsed for both user and admin email templates instead of just the email headers
-V1.9 - 24/10/11 - Removed conflict with User Access Manager plugin causing the resend welcome email rows to now show on the user list
-V2.0 - 27/10/11 - Moved the user column inline next to the edit and delete user actions to save space
-V2.1 - 17/11/11 - Added multisite support so that the welcome email will be edited and sent in the same way as the single site variant
-V2.2 - 12/12/11 - Added edit box for the subject line and body text for the reminder email. Added option to turn off the reminder service
-V2.3 - 16/12/11 - Broke the reminder service in the last update. This patch sorts it out. Also tested with WP 3.3
-V2.4 - 03/01/12 - Minor update to disable the reminder service send button in the user list. Previously only stopped the logging but the button remained
-V2.5 - 18/01/12 - Minor update to resolve double sending of reminder emails in some cases. Thanks to igorii for sending the fix my way before I had a moment to look myself :)
-V2.6 - 30/01/12 - Update adds functionality for reset/forgot password text changes (not formatting or HTML at the moment.. just the copy). Also adds a new shortcode for admin emails for buddypress custom fields: [bp_custom_fields]
-V2.7 - 01/02/12 - Minor update adds site wide change of from address and name from plugin settings meaning a more consistent feel for your site. Also reminder email and welcome email shortcode bugs fixed.
-V2.8 - 02/02/12 - Minor update fixes sender bug introduced by V2.7
-V2.9 - 05/02/12 - Minor update fixes bug which was overriding the from name and address for all wordpress and plugin emails. Now lowered the priority of the filter and have made the global usage of the filter optional via the admin screen. Added labels to the admin screen as the list was getting rather long!
-V3.0 - 16/02/12 - Minor update fixes a few coding inconsistencies. With thanks to John Cotton for notifying and fixing these issues on my behalf.
-V3.1 - 17/02/12 - Minor update fixes a minor notice showing up on sites with error reporting set to ALL (or anything to include PHP notices)
-V3.2 - 21/02/12 - Copy/paste error which broke the reminder email system. My apologies!
-V3.3 - 05/05/12 - Buddypress custom fields shortcode now checks for existence of itself before querying nonexistent tables.
-V3.4 - 22/05/12 - Minor update.. added [date] and [time] shortcodes to the template
-V3.5 - 16/01/13 - Minor update.. Found conflict with S2Member where the FROM address information wasnt being respected. Fixed the conflict
-V3.6 - 21/01/13 - Minor update. Moved menu to the settings panel and renmaed to SB Welcome Email so that it fits on one line.
-V3.7 - 27/02/13 - Minor update. Added ability to have an attachment with the welcome email. Moved the admin page into the settings menu.
-V3.8 - 14/05/13 - Minor update. Removed reminder email functionality
-V3.9 - 23/05/13 - Minor update. Added code recommended by 'http://forum.ait-pro.com/forums/topic/bps-pro-5-8-conflict-with-other-email-plugin/', Also turned off the direct phpmailer interaction as it was causing issues with some setups
-V4.0 - 20/07/15 - Added some code to force this plugin to the top of the load order to reduce conflict with other plugins. Alsot sorted out those dodgy radio buttons on the settings page!
 */
 
 $sb_we_file = trailingslashit(str_replace('\\', '/', __FILE__));
@@ -48,8 +20,6 @@ define('SB_WE_PLUGIN_DIRNAME', str_replace('/plugins/','',strstr(SB_WE_PLUGIN_DI
 
 $sb_we_admin_start = '<div id="poststuff" class="wrap"><h2>' . SB_WE_PRODUCT_NAME . '</h2>';
 $sb_we_admin_end = '</div>';
-
-//sb_we_printr(get_option('active_plugins'));
 
 function sb_we_loaded() {
 
@@ -124,7 +94,7 @@ function sb_we_lost_password_message($message, $key) {
 function sb_we_send_new_user_notification($user_id) {
 	$return = false;
 
-	if (!$plaintext_pass = get_usermeta($user_id, 'sb_we_plaintext_pass')) {
+	if (!$plaintext_pass = get_user_meta($user_id, 'sb_we_plaintext_pass', true)) { //depracated but leaving the functionlality in in case anyone wants to hook into it later
 		$plaintext_pass = '[Your Password Here]';
 	}
 
@@ -187,6 +157,8 @@ function sb_we_set_email_filter_headers($reset=false) {
 		remove_filter('wp_mail_from_name', 'sb_we_get_from_name', 1, 1);
 		remove_filter('wp_mail_content_type', create_function('$i', 'return "text/html";'), 1, 1);
 		remove_filter('wp_mail_charset', 'sb_we_get_charset', 1, 1);
+		
+		do_action('sb_we_email_headers_reset');
 	} else {
 		$sb_we_settings = get_option('sb_we_settings');
 	
@@ -203,6 +175,8 @@ function sb_we_set_email_filter_headers($reset=false) {
 				add_filter('wp_mail_charset', 'sb_we_get_charset', 1, 1);
 			}
 		}
+		
+		do_action('sb_we_email_headers');
 	}
 }
 
@@ -263,11 +237,11 @@ if (!function_exists('wp_new_user_notification')) {
 			$user_login = stripslashes($user->user_login);
 			$user_email = stripslashes($user->user_email);
 
-			$user_subject = $settings->user_subject;
-			$user_message = $settings->user_body;
+			$user_subject = apply_filters('sb_we_user_subject_template', $settings->user_subject);
+			$user_message = apply_filters('sb_we_user_body_template', $settings->user_body);
 
-			$admin_subject = $settings->admin_subject;
-			$admin_message = $settings->admin_body;
+			$admin_subject = apply_filters('sb_we_admin_subject_template', $settings->admin_subject);
+			$admin_message = apply_filters('sb_we_admin_body_template', $settings->admin_body);
 
 			$first_name = $user->first_name;
 			$last_name = $user->last_name;
@@ -308,6 +282,8 @@ if (!function_exists('wp_new_user_notification')) {
 			$headers = str_replace('[admin_email]', $admin_email, $headers);
 			$headers = str_replace('[blog_name]', $blog_name, $headers);
 			$headers = str_replace('[site_url]', $sb_we_home, $headers);
+			
+			$headers = apply_filters('sb_we_email_headers', $headers, $settings);
 			//End Headers
 
 			//Don't notify if the admin object doesn't exist;
@@ -361,6 +337,11 @@ if (!function_exists('wp_new_user_notification')) {
 				$admin_subject = str_replace('[user_id]', $user_id, $admin_subject);
 				$admin_subject = str_replace('[date]', $date, $admin_subject);
 				$admin_subject = str_replace('[time]', $time, $admin_subject);
+				
+				$admin_message = apply_filters('sb_we_email_admin_message', $admin_message, $settings);
+				$admin_subject = apply_filters('sb_we_email_admin_subject', $admin_subject, $settings);
+				
+				$admins = apply_filters('sb_we_email_admins', $admins);
 
 				foreach ($admins as $admin_id) {
 					if ($admin = new WP_User($admin_id)) {
@@ -369,7 +350,7 @@ if (!function_exists('wp_new_user_notification')) {
 				}
 			}
 
-			if (!empty($plaintext_pass)) {
+			if ($plaintext_pass) {
 				$user_message = str_replace('[admin_email]', $admin_email, $user_message);
 				$user_message = str_replace('[site_url]', $sb_we_home, $user_message);
 				$user_message = str_replace('[login_url]', $sb_we_home . 'wp-login.php', $user_message);
@@ -393,6 +374,9 @@ if (!function_exists('wp_new_user_notification')) {
 				$user_subject = str_replace('[user_id]', $user_id, $user_subject);
 				$user_subject = str_replace('[date]', $date, $user_subject);
 				$user_subject = str_replace('[time]', $time, $user_subject);
+				
+				$user_subject = apply_filters('sb_we_email_subject', $user_subject, $settings);
+				$user_message = apply_filters('sb_we_email_message', $user_message, $settings);
 				
 				$attachment = false;
 				if (trim($settings->we_attachment_url)) {
@@ -428,6 +412,8 @@ function sb_we_get_bp_custom_fields($user_id) {
 	foreach($array as $key=>$value) {
 		$assoc_array[$value->name] = $value->value;
 	}
+	
+	$assoc_array = apply_filters('sb_we_custom_fields', $assoc_array);
 
 	return $assoc_array;
 }
@@ -603,6 +589,8 @@ function sb_we_settings() {
 		, 'value'=>'Test Emails (Save first, will send to current user)'
 	)
 	);
+	
+	$page_options = apply_filters('sb_we_settings_fields', $page_options);
 
 	$html .= '<div style="margin-bottom: 10px;">' . __('This page allows you to update the Wordpress welcome email and add headers to make it less likely to fall into spam. You can edit the templates for both the admin and user emails and assign admin members to receive the notifications. Use the following hooks in any of the boxes below: [site_url], [login_url], [user_email], [user_login], [plaintext_password], [blog_name], [admin_email], [user_id], [custom_fields], [first_name], [last_name], [date], [time], [bp_custom_fields] (buddypress custom fields .. admin only)', 'sb_we') . '</div>';
 	$html .= sb_we_start_box('Settings');
@@ -768,7 +756,6 @@ function sb_we_admin_page() {
 	$func = 'sb_we_admin_loader';
 	$access_level = 'manage_options';
 
-	//add_menu_page(SB_WE_PRODUCT_NAME, SB_WE_PRODUCT_NAME, $access_level, $admin_page, $func);
 	add_submenu_page('options-general.php', SB_WE_PRODUCT_NAME, SB_WE_PRODUCT_NAME, $access_level, $admin_page, $func);
 
 }
