@@ -73,8 +73,9 @@ V3.9 - 23/05/13 - Minor update. Added code recommended by 'http://forum.ait-pro.
 
 V4.0 - 20/07/15 - Added some code to force this plugin to the top of the load order to reduce conflict with other plugins. Alsot sorted out those dodgy radio buttons on the settings page!
 
-V4.1 - 22/07/25 - Replaced reference to get_usermeta in favour of get_user_meta. Also added a load of filters and actions for third party developers to hook into.
+V4.1 - 22/07/15 - Replaced reference to get_usermeta in favour of get_user_meta. Also added a load of filters and actions for third party developers to hook into.
 
+V4.2 - 30/07/15 - Removed a potential security issue in the admin page loader. Nothing huge but it would allow arbitrary functions to be called by admin users via the URL.
 
 == Installation ==
 

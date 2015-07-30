@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the content, layout and even add an attachment for many of the inbuilt Wordpress emails. Simple!
-Version: 4.2
+Version: 4.3
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 */
@@ -763,10 +763,8 @@ function sb_we_admin_page() {
 function sb_we_admin_loader() {
 	global $sb_we_admin_start, $sb_we_admin_end;
 
-	$page = str_replace(SB_WE_PLUGIN_DIRNAME, '', trim($_REQUEST['page']));
-
 	echo $sb_we_admin_start;
-	echo $page();
+	echo sb_we_settings();
 	echo $sb_we_admin_end;
 }
 
