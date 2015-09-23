@@ -3,7 +3,7 @@
 Plugin Name: SB Welcome Email Editor
 Plugin URI: http://www.sean-barton.co.uk
 Description: Allows you to change the content, layout and even add an attachment for many of the inbuilt Wordpress emails. Simple!
-Version: 4.3
+Version: 4.5
 Author: Sean Barton
 Author URI: http://www.sean-barton.co.uk
 */
@@ -25,10 +25,41 @@ function sb_we_loaded() {
 
 	add_action('init', 'sb_we_init');
 	add_action('admin_menu', 'sb_we_admin_page');
-
-	if( $settings = get_option('sb_we_settings') ) {	// prevent warning on $settings use when first enabled
+	
+	add_filter("retrieve_password_title", "sb_we_lost_password_title");
+	add_filter("retrieve_password_message", "sb_we_lost_password_message", 10, 4);
+	
+	//delete_option('sb_we_settings');
+	
+	if (isset($_GET['hide_nag'])) {
+		update_option('sb_we_hide_nag', time());
+		header('location: ' . admin_url('options-general.php?page=sb_we_settings'));
+		die;
 	}
 
+	if( $settings = get_option('sb_we_settings') ) { // prevent warning on $settings use when first enabled
+		
+		if (version_compare(get_bloginfo( 'version' ), '4.3') >= 0) { //only run when the version is on or past 4.3
+			if (!get_option('sb_we_v4_migration_complete')) {
+				//reset_pass_link replacement for legacy installs - remove around Christmas 2015.. maybe :)
+				//This is to look in the settings for user_body, admin_body search and replace. plaintext_password and user_password
+				
+				$replace_to = '[reset_pass_link]';
+				if ($settings->header_send_as == 'text') {
+					$replace_to = 'Visit [reset_pass] to set your password';
+				}
+				
+				$settings->user_body = str_replace('[plaintext_password]', $replace_to, $settings->user_body);
+				$settings->user_body = str_replace('[user_password]', $replace_to, $settings->user_body);
+				$settings->admin_body = str_replace('[plaintext_password]', $replace_to, $settings->admin_body);
+				$settings->admin_body = str_replace('[user_password]', $replace_to, $settings->admin_body);
+				
+				update_option('sb_we_v4_migration_complete', time()); //mark as having completed the migration
+				update_option('sb_we_settings', $settings); //mark as having completed the migration
+			}
+		}
+	}
+	
 	add_filter('wpmu_welcome_user_notification', 'sb_we_mu_new_user_notification', 10, 3 );
 
 	global $sb_we_active;
@@ -43,7 +74,7 @@ function sb_we_loaded() {
 			if (substr($key, 0, 6) == 'sb_we_') {
 				if (substr($key, 0, 13) == 'sb_we_resend_') {
 					if ($user_id = substr($key, 13)) {
-						sb_we_send_new_user_notification($user_id, true);
+						sb_we_send_new_user_notification($user_id, true, true);
 						wp_redirect(admin_url('users.php'));
 					}
 				}
@@ -56,6 +87,8 @@ function sb_we_lost_password_title($content) {
 	$settings = get_option('sb_we_settings');
 
 	if ($settings->password_reminder_subject) {
+		sb_we_set_email_filter_headers(); //to set content type etc.
+		
 		if ( is_multisite() ) $blogname = $GLOBALS['current_site']->site_name;
 		else $blogname = esc_html(get_option('blogname'), ENT_QUOTES);
 
@@ -66,26 +99,25 @@ function sb_we_lost_password_title($content) {
 	return $content;
 }
 
-function sb_we_lost_password_message($message, $key) {
+function sb_we_lost_password_message($message, $key, $user_login, $user_data) {
 	global $wpdb;
 
 	$settings = get_option('sb_we_settings');
 
 	if (trim($settings->password_reminder_body)) {
-		if ($user_login = $wpdb->get_var($wpdb->prepare("SELECT user_login FROM $wpdb->users WHERE user_activation_key = %s", $key))) {
-			$site_url = site_url();
+		$site_url = site_url();
 
-			if ( is_multisite() ) $blogname = $GLOBALS['current_site']->site_name;
-			else $blogname = esc_html(get_option('blogname'), ENT_QUOTES);
+		if ( is_multisite() ) $blogname = $GLOBALS['current_site']->site_name;
+		else $blogname = esc_html(get_option('blogname'), ENT_QUOTES);
+		
+		$reset_url = network_site_url("wp-login.php?action=rp&key=$key&login=" . rawurlencode($user_login), 'login');
+		
+		$message = $settings->password_reminder_body; //'Someone requested that the password be reset for the following account: [site_url]' . "\n\n" . 'Username: [user_login]' . "\n\n" . 'If this was a mistake, just ignore this email and nothing will happen.' . "\n\n" . 'To reset your password, visit the following address: [reset_url]';
 
-			$reset_url = trailingslashit(site_url()) . "wp-login.php?action=rp&key=$key&login=" . rawurlencode($user_login);
-			$message = $settings->password_reminder_body; //'Someone requested that the password be reset for the following account: [site_url]' . "\n\n" . 'Username: [user_login]' . "\n\n" . 'If this was a mistake, just ignore this email and nothing will happen.' . "\n\n" . 'To reset your password, visit the following address: [reset_url]';
-
-			$message = str_replace('[user_login]', $user_login, $message);
-			$message = str_replace('[blog_name]', $blogname, $message);
-			$message = str_replace('[site_url]', $site_url, $message);
-			$message = str_replace('[reset_url]', $reset_url, $message);
-		}
+		$message = str_replace('[user_login]', $user_login, $message);
+		$message = str_replace('[blog_name]', $blogname, $message);
+		$message = str_replace('[site_url]', $site_url, $message);
+		$message = str_replace('[reset_url]', $reset_url, $message);
 	}
 
 	return $message;
@@ -94,11 +126,7 @@ function sb_we_lost_password_message($message, $key) {
 function sb_we_send_new_user_notification($user_id) {
 	$return = false;
 
-	if (!$plaintext_pass = get_user_meta($user_id, 'sb_we_plaintext_pass', true)) { //depracated but leaving the functionlality in in case anyone wants to hook into it later
-		$plaintext_pass = '[Your Password Here]';
-	}
-
-	if (wp_new_user_notification($user_id, $plaintext_pass)) {
+	if (wp_new_user_notification($user_id, false, 'both')) {
 		$return = 'Welcome email sent.';
 	}
 
@@ -106,7 +134,7 @@ function sb_we_send_new_user_notification($user_id) {
 }
 
 function sb_we_mu_new_user_notification($user_id, $password, $meta='') {
-	return wp_new_user_notification($user_id, $password);
+	return wp_new_user_notification($user_id, null, 'both'); //@todo.. check this does something and fix.
 }
 
 function sb_we_priority_load_plugin() {
@@ -215,8 +243,9 @@ function sb_we_process_phpmailer_from_info(&$phpmailer) {
 //add_action('phpmailer_init', 'sb_we_process_phpmailer_from_info',1); //disabled this as it was overkill and disrupting other email plugins
 
 if (!function_exists('wp_new_user_notification')) {
-	function wp_new_user_notification($user_id, $plaintext_pass = '') {
-		global $sb_we_home, $current_site;;
+	
+	function wp_new_user_notification($user_id, $depracated='', $notify = '') {
+		global $sb_we_home, $current_site, $wpdb;
 		
 		if (@$sb_we_settings->set_global_headers) {
 			sb_we_set_email_filter_headers();
@@ -318,14 +347,17 @@ if (!function_exists('wp_new_user_notification')) {
 				$admin_message = str_replace('[first_name]', $first_name, $admin_message);
 				$admin_message = str_replace('[last_name]', $last_name, $admin_message);
 				$admin_message = str_replace('[user_id]', $user_id, $admin_message);
-				$admin_message = str_replace('[plaintext_password]', $plaintext_pass, $admin_message);
-				$admin_message = str_replace('[user_password]', $plaintext_pass, $admin_message);
+				$admin_message = str_replace('[plaintext_password]', '*****', $admin_message);
+				$admin_message = str_replace('[user_password]', '*****', $admin_message);
 				$admin_message = str_replace('[custom_fields]', '<pre>' . print_r($custom_fields, true) . '</pre>', $admin_message);
+				$admin_message = str_replace('[post_data]', '<pre>' . print_r($_REQUEST, true) . '</pre>', $admin_message);
 				$admin_message = str_replace('[date]', $date, $admin_message);
 				$admin_message = str_replace('[time]', $time, $admin_message);
 				
 				if (strpos($admin_message, '[bp_custom_fields]')) {
-					$admin_message = str_replace('[bp_custom_fields]', '<pre>' . print_r(sb_we_get_bp_custom_fields($user_id), true) . '</pre>', $admin_message);
+					if (function_exists('sb_we_get_bp_custom_fields')) {
+						$admin_message = str_replace('[bp_custom_fields]', '<pre>' . print_r(sb_we_get_bp_custom_fields($user_id), true) . '</pre>', $admin_message);
+					}
 				}
 
 				$admin_subject = str_replace('[blog_name]', $blog_name, $admin_subject);
@@ -342,7 +374,7 @@ if (!function_exists('wp_new_user_notification')) {
 				$admin_subject = apply_filters('sb_we_email_admin_subject', $admin_subject, $settings);
 				
 				$admins = apply_filters('sb_we_email_admins', $admins);
-
+				
 				foreach ($admins as $admin_id) {
 					if ($admin = new WP_User($admin_id)) {
 						wp_mail($admin->user_email, $admin_subject, $admin_message, $headers);
@@ -350,17 +382,42 @@ if (!function_exists('wp_new_user_notification')) {
 				}
 			}
 
-			if ($plaintext_pass) {
+			if ($notify && $notify != 'admin') { //needs to be like this for backwards compatibility
+				
+				$login_url = $reset_pass_url = $sb_we_home . 'wp-login.php';
+				
+				if (version_compare(get_bloginfo( 'version' ), '4.3') >= 0) {
+					//set the password hash and generate a link to go and set it rather than sending it to them in plaintext
+					// Generate a key.
+					$key = wp_generate_password( 20, false );
+					
+					do_action( 'retrieve_password_key', $user->user_login, $key );
+			
+					// Now insert the key, hashed, into the DB.
+					if ( empty( $wp_hasher ) ) {
+						require_once ABSPATH . WPINC . '/class-phpass.php';
+						$wp_hasher = new PasswordHash( 8, true );
+					}
+					
+					$hashed = time() . ':' . $wp_hasher->HashPassword( $key );
+					$wpdb->update( $wpdb->users, array( 'user_activation_key' => $hashed ), array( 'user_login' => $user->user_login ) );
+					
+					$login_url = $reset_pass_url = network_site_url("wp-login.php?action=rp&key=$key&login=" . rawurlencode($user->user_login), 'login');
+					//$login_url = network_site_url("wp-login.php?action=rp", 'login');
+				}
+				
 				$user_message = str_replace('[admin_email]', $admin_email, $user_message);
 				$user_message = str_replace('[site_url]', $sb_we_home, $user_message);
-				$user_message = str_replace('[login_url]', $sb_we_home . 'wp-login.php', $user_message);
+				$user_message = str_replace('[login_url]', $login_url, $user_message);
+				$user_message = str_replace('[reset_pass_url]', $reset_pass_url, $user_message);
+				$user_message = str_replace('[reset_pass_link]', '<a href="' . $reset_pass_url . '" target="_blank">Click to set</a>', $user_message);
 				$user_message = str_replace('[user_email]', $user_email, $user_message);
 				$user_message = str_replace('[user_login]', $user_login, $user_message);
 				$user_message = str_replace('[last_name]', $last_name, $user_message);
 				$user_message = str_replace('[first_name]', $first_name, $user_message);
 				$user_message = str_replace('[user_id]', $user_id, $user_message);
-				$user_message = str_replace('[plaintext_password]', $plaintext_pass, $user_message);
-				$user_message = str_replace('[user_password]', $plaintext_pass, $user_message);
+				$user_message = str_replace('[plaintext_password]', '*****', $user_message);
+				$user_message = str_replace('[user_password]', '*****', $user_message);
 				$user_message = str_replace('[blog_name]', $blog_name, $user_message);
 				$user_message = str_replace('[date]', $date, $user_message);
 				$user_message = str_replace('[time]', $time, $user_message);
@@ -458,10 +515,10 @@ function sb_we_settings() {
 		global $current_user;
 		get_currentuserinfo();
 
-		wp_new_user_notification($current_user->ID, '[User password will appear here]');
+		wp_new_user_notification($current_user->ID, false, 'both');
 		sb_we_display_message('Test email sent to "' . $current_user->user_email . '"');
 	}
-
+	
 	$html = '';
 	$settings = get_option('sb_we_settings');
 
@@ -592,8 +649,16 @@ function sb_we_settings() {
 	
 	$page_options = apply_filters('sb_we_settings_fields', $page_options);
 
-	$html .= '<div style="margin-bottom: 10px;">' . __('This page allows you to update the Wordpress welcome email and add headers to make it less likely to fall into spam. You can edit the templates for both the admin and user emails and assign admin members to receive the notifications. Use the following hooks in any of the boxes below: [site_url], [login_url], [user_email], [user_login], [plaintext_password], [blog_name], [admin_email], [user_id], [custom_fields], [first_name], [last_name], [date], [time], [bp_custom_fields] (buddypress custom fields .. admin only)', 'sb_we') . '</div>';
+	$html .= '<div style="margin-bottom: 10px;">' . __('This page allows you to update the Wordpress welcome email and add headers to make it less likely to fall into spam. You can edit the templates for both the admin and user emails and assign admin members to receive the notifications. Use the following hooks in any of the boxes below: [site_url], [login_url], [reset_pass_url], [user_email], [user_login], [blog_name], [admin_email], [user_id], [custom_fields], [first_name], [last_name], [date], [time], [bp_custom_fields] (buddypress custom fields .. admin only), [post_data] (admin only. Sends $_REQUEST)', 'sb_we') . '</div>';
 	$html .= sb_we_start_box('Settings');
+	
+	if (version_compare(get_bloginfo( 'version' ), '4.3') >= 0) { //set the password hash and generate a link to go and set it rather than sending it to them in plaintext
+		if (!get_option('sb_we_hide_nag')) {
+			$html .= ' <div class="updated">
+					<p>IMPORTANT: As of WP 4.3, a plain text password is no longer passed to the Welcome Email functionality. If you start to receive emails with a password value of "admin" or "both" then you will need to update your message below. The new system doesn\'t include a password to give the user and, instead, asks for the user to click a link to set their password directly using the WordPress login pages. Whilst this is less convenient than it was before we do have no control over things so we need to follow the WordPress model. Provision has been made though for a password to be included where it is set on the previous and included in the page data. See the settings below for more information.<br /><a href="' . admin_url('options-general.php?page=sb_we_settings&hide_nag=1') . '">Thanks, I\'ve read this! Don\'t show again</a></p>
+				</div>';
+		}
+	}
 
 	$html .= '<form method="POST">';
 	$html .= '<table class="widefat">';
