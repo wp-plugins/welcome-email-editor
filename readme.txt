@@ -84,6 +84,10 @@ V4.4 - 08/09/15 - Some people were not seeing the upgrade banner on the site. I 
 
 V4.5 - 23/09/15 - Annoyingly WP updated the wp_new_user_notification again. This moved the second to the third parameter therefore breaking this plugin again. Fixed now!
 
+V4.6 - 23/09/15 - Added fix for the lost password email user_login sometimes not being a string. Many thanks to the forum members for this solution
+
+V4.7 - 12/11/15 - Changed the login URLs to use wp_login_url() instead of hard coding for wp-login.php. Merged in a set of changes by Luca Speranza to localise the plugin. Thanks so much for your help there!
+
 == Installation ==
 
 1. Upload the contents of the ZIP file to the `/wp-content/plugins/` directory
